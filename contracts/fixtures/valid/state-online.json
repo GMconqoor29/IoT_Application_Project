@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "bootId": "b7f3a901",
+  "online": true,
+  "reason": "HEARTBEAT",
+  "uptimeMs": 3690000,
+  "observedAt": "2026-11-06T07:00:00Z",
+  "reportIntervalSec": 30,
+  "sensorStatus": {
+    "sht30": "VALID",
+    "mq135": "VALID",
+    "dust": "VALID"
+  },
+  "queueDepth": 0,
+  "queueCapacity": 120,
+  "droppedTotal": 0,
+  "rejectedTotal": 0,
+  "errors": []
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "messageId": "AIRSENSE-001:b7f3a901:123",
+  "bootId": "b7f3a901",
+  "sequence": 123,
+  "measuredAt": "2026-11-06T07:00:00Z",
+  "uptimeMs": 3690000,
+  "timeQuality": "SYNCED",
+  "reportIntervalSec": 30,
+  "values": {
+    "temperatureC": 27.1,
+    "humidityPct": 61.4,
+    "gasRelative": 1.08,
+    "dustEstimateUgM3": null
+  },
+  "raw": {
+    "gasAdcCounts": 1474,
+    "gasAdcMv": 1080,
+    "dustAdcCounts": 1120,
+    "dustAdcMv": 820
+  },
+  "quality": {
+    "sht30": "VALID",
+    "mq135": "WARMING_UP",
+    "dust": "VALID"
+  },
+  "calibration": {
+    "gasId": "gas-baseline-001",
+    "dustId": null
+  }
+}

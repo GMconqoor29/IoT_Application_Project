@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ESP32: Upload & Serial Monitor",
+      "type": "shell",
+      "command": "${env:HOME}/.platformio/penv/bin/pio run -t upload -t monitor",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP32: Serial Monitor (115200)",
+      "type": "shell",
+      "command": "${env:HOME}/.platformio/penv/bin/pio device monitor -b 115200",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP32: Build Firmware",
+      "type": "shell",
+      "command": "${env:HOME}/.platformio/penv/bin/pio run",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP32: Upload Only",
+      "type": "shell",
+      "command": "${env:HOME}/.platformio/penv/bin/pio run -t upload",
+      "options": {
+        "cwd": "${workspaceFolder}/firmware"
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

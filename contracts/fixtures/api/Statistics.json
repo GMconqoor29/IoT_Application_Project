@@ -1,0 +1,47 @@
+{
+  "deviceId": "AIRSENSE-001",
+  "from": "2026-11-06T07:00:00Z",
+  "to": "2026-11-06T07:01:00Z",
+  "parameters": {
+    "temperatureC": {
+      "unit": "degC",
+      "min": 27.1,
+      "max": 27.1,
+      "mean": 27.1,
+      "validCount": 1,
+      "calibrationId": null
+    },
+    "humidityPct": {
+      "unit": "%RH",
+      "min": 61.4,
+      "max": 61.4,
+      "mean": 61.4,
+      "validCount": 1,
+      "calibrationId": null
+    },
+    "gasRelative": {
+      "unit": "ratio",
+      "min": 1.08,
+      "max": 1.08,
+      "mean": 1.08,
+      "validCount": 1,
+      "calibrationId": "gas-baseline-001"
+    },
+    "dustAdcMv": {
+      "unit": "mV",
+      "min": 820,
+      "max": 820,
+      "mean": 820,
+      "validCount": 1,
+      "calibrationId": null
+    },
+    "dustEstimateUgM3": {
+      "unit": "ug/m3",
+      "min": null,
+      "max": null,
+      "mean": null,
+      "validCount": 0,
+      "calibrationId": null
+    }
+  }
+}

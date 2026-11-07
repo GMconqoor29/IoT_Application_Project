@@ -1,0 +1,2695 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AirSense API",
+    "version": "1.0.0",
+    "description": "Contract only; no server implementation. MQ-135 gas response ratio and experimental dust response, never CO2/eCO2 or official AQI. See README.md for ingestion, calibration, ordering and validation semantics."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development only; use HTTPS in deployment"
+    }
+  ],
+  "paths": {
+    "/api/devices": {
+      "get": {
+        "operationId": "listDevices",
+        "summary": "List registered devices and their freshness",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Device"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{id}/latest": {
+      "get": {
+        "operationId": "getLatest",
+        "summary": "Get latest eligible synchronized reading and independent device status",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Latest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{id}/measurements": {
+      "get": {
+        "operationId": "listMeasurements",
+        "summary": "Get synchronized history ordered by measuredAt then messageId ascending",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Inclusive UTC acquisition time."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Exclusive UTC acquisition time; must exceed from. Maximum range 31 days."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "Opaque keyset cursor bound to filters; do not interpret."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeasurementPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{id}/stats": {
+      "get": {
+        "operationId": "getStatistics",
+        "summary": "Get valid per-channel statistics over acquisition time",
+        "security": [],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Inclusive UTC acquisition time."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Exclusive UTC acquisition time; must exceed from. Maximum range 31 days."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "operationId": "listAlerts",
+        "summary": "Get alert history ordered by openedAt then id ascending",
+        "security": [],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": ""
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Inclusive UTC acquisition time."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+            },
+            "description": "Exclusive UTC acquisition time; must exceed from. Maximum range 31 days."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "Opaque keyset cursor bound to filters; do not interpret."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/thresholds": {
+      "get": {
+        "operationId": "listThresholds",
+        "summary": "Get current threshold revisions",
+        "security": [],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Threshold"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/thresholds/{id}": {
+      "put": {
+        "operationId": "updateThreshold",
+        "summary": "Replace editable rule settings with optimistic concurrency",
+        "security": [
+          {
+            "adminSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThresholdUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated rule with incremented revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Threshold"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrator or CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Revision or calibration conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Create administrator session; validate same-origin request",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session created; CSRF token returned for writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "airsense_session; HttpOnly; Secure in deployment; SameSite=Strict; Path=/api"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrator or CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Invalidate session and expire session cookie",
+        "security": [
+          {
+            "adminSession": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session ended"
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrator or CSRF check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "adminSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "airsense_session"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      }
+    },
+    "schemas": {
+      "Telemetry": {
+        "title": "AirSense v1 telemetry",
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+          },
+          "messageId": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}:[a-f0-9]{8,32}:(0|[1-9][0-9]{0,15})$",
+            "maxLength": 114
+          },
+          "bootId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8,32}$"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "measuredAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uptimeMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "timeQuality": {
+            "enum": [
+              "SYNCED",
+              "UNSYNCED"
+            ]
+          },
+          "reportIntervalSec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          },
+          "values": {
+            "type": "object",
+            "properties": {
+              "temperatureC": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": -40,
+                    "maximum": 125
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "humidityPct": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gasRelative": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dustEstimateUgM3": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "temperatureC",
+              "humidityPct",
+              "gasRelative",
+              "dustEstimateUgM3"
+            ],
+            "additionalProperties": false
+          },
+          "raw": {
+            "type": "object",
+            "properties": {
+              "gasAdcCounts": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gasAdcMv": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dustAdcCounts": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dustAdcMv": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "gasAdcCounts",
+              "gasAdcMv",
+              "dustAdcCounts",
+              "dustAdcMv"
+            ],
+            "additionalProperties": false
+          },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "sht30": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              },
+              "mq135": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              },
+              "dust": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              }
+            },
+            "required": [
+              "sht30",
+              "mq135",
+              "dust"
+            ],
+            "additionalProperties": false
+          },
+          "calibration": {
+            "type": "object",
+            "properties": {
+              "gasId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dustId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "gasId",
+              "dustId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "deviceId",
+          "messageId",
+          "bootId",
+          "sequence",
+          "measuredAt",
+          "uptimeMs",
+          "timeQuality",
+          "reportIntervalSec",
+          "values",
+          "raw",
+          "quality",
+          "calibration"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "timeQuality": {
+                  "const": "SYNCED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "measuredAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "timeQuality": {
+                  "const": "UNSYNCED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "measuredAt": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "sht30": {
+                      "const": "VALID"
+                    }
+                  },
+                  "required": [
+                    "sht30"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "temperatureC": {
+                      "type": "number",
+                      "minimum": -40,
+                      "maximum": 125
+                    },
+                    "humidityPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "sht30": {
+                      "not": {
+                        "const": "VALID"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sht30"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "temperatureC": {
+                      "type": "null"
+                    },
+                    "humidityPct": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "mq135": {
+                      "const": "VALID"
+                    }
+                  },
+                  "required": [
+                    "mq135"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "gasRelative": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "raw": {
+                  "properties": {
+                    "gasAdcCounts": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 65535
+                    },
+                    "gasAdcMv": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  }
+                },
+                "calibration": {
+                  "properties": {
+                    "gasId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "mq135": {
+                      "not": {
+                        "const": "VALID"
+                      }
+                    }
+                  },
+                  "required": [
+                    "mq135"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "gasRelative": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "dust": {
+                      "const": "VALID"
+                    }
+                  },
+                  "required": [
+                    "dust"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "raw": {
+                  "properties": {
+                    "dustAdcCounts": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 65535
+                    },
+                    "dustAdcMv": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "dust": {
+                      "not": {
+                        "const": "VALID"
+                      }
+                    }
+                  },
+                  "required": [
+                    "dust"
+                  ]
+                }
+              },
+              "required": [
+                "quality"
+              ]
+            },
+            "then": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "dustEstimateUgM3": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "values": {
+                  "properties": {
+                    "dustEstimateUgM3": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "dustEstimateUgM3"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "quality": {
+                  "properties": {
+                    "dust": {
+                      "const": "VALID"
+                    }
+                  }
+                },
+                "calibration": {
+                  "properties": {
+                    "dustId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DeviceState": {
+        "title": "AirSense v1 state",
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+          },
+          "bootId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{8,32}$"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              "CONNECTED",
+              "HEARTBEAT",
+              "GRACEFUL_DISCONNECT",
+              "CONNECTION_LOST"
+            ]
+          },
+          "uptimeMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportIntervalSec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          },
+          "sensorStatus": {
+            "type": "object",
+            "properties": {
+              "sht30": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              },
+              "mq135": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              },
+              "dust": {
+                "enum": [
+                  "VALID",
+                  "WARMING_UP",
+                  "UNCALIBRATED",
+                  "INVALID",
+                  "UNAVAILABLE"
+                ]
+              }
+            },
+            "required": [
+              "sht30",
+              "mq135",
+              "dust"
+            ],
+            "additionalProperties": false
+          },
+          "queueDepth": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "queueCapacity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "droppedTotal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rejectedTotal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "errors": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "deviceId",
+          "bootId",
+          "online",
+          "reason",
+          "uptimeMs",
+          "observedAt",
+          "reportIntervalSec",
+          "sensorStatus",
+          "queueDepth",
+          "queueCapacity",
+          "droppedTotal",
+          "rejectedTotal",
+          "errors"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "online": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reason": {
+                  "enum": [
+                    "CONNECTED",
+                    "HEARTBEAT"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "online": {
+                  "const": false
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reason": {
+                  "enum": [
+                    "GRACEFUL_DISCONNECT",
+                    "CONNECTION_LOST"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "title": "AirSense v1 metadata",
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+          },
+          "deviceType": {
+            "const": "IAQ_SENSOR_NODE"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "boardModel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "chipModel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "firmwareVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "sensors": {
+            "type": "object",
+            "properties": {
+              "temperatureHumidity": {
+                "const": "SHT30"
+              },
+              "gas": {
+                "const": "MQ-135"
+              },
+              "dust": {
+                "const": "GP2Y1010AU0F"
+              }
+            },
+            "required": [
+              "temperatureHumidity",
+              "gas",
+              "dust"
+            ],
+            "additionalProperties": false
+          },
+          "capabilities": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "temperatureC",
+                "humidityPct",
+                "gasRelative",
+                "dustAdcMv",
+                "dustEstimateUgM3",
+                "SET_REPORT_INTERVAL"
+              ]
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "const": "temperatureC"
+                }
+              },
+              {
+                "contains": {
+                  "const": "humidityPct"
+                }
+              },
+              {
+                "contains": {
+                  "const": "gasRelative"
+                }
+              },
+              {
+                "contains": {
+                  "const": "dustAdcMv"
+                }
+              }
+            ]
+          },
+          "adc": {
+            "type": "object",
+            "properties": {
+              "resolutionBits": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 16
+              },
+              "gasUsableMaxMv": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "dustUsableMaxMv": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "resolutionBits",
+              "gasUsableMaxMv",
+              "dustUsableMaxMv"
+            ],
+            "additionalProperties": false
+          },
+          "calibration": {
+            "type": "object",
+            "properties": {
+              "gasId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dustId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "gasId",
+              "dustId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "deviceId",
+          "deviceType",
+          "model",
+          "boardModel",
+          "chipModel",
+          "firmwareVersion",
+          "location",
+          "sensors",
+          "capabilities",
+          "adc",
+          "calibration"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "details": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "field",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "details"
+        ],
+        "additionalProperties": false,
+        "examples": [
+          {
+            "code": "INVALID_REQUEST",
+            "message": "Invalid time range.",
+            "details": [
+              {
+                "field": "to",
+                "reason": "Must be greater than from."
+              }
+            ]
+          }
+        ]
+      },
+      "StoredMeasurement": {
+        "type": "object",
+        "properties": {
+          "telemetry": {
+            "$ref": "#/components/schemas/Telemetry"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+          }
+        },
+        "required": [
+          "telemetry",
+          "receivedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Recommendation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "measurementIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 114
+            }
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "WITHDRAWN",
+              "UNCERTAIN"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "measurementIds",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "firmwareVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "freshness": {
+            "enum": [
+              "FRESH",
+              "STALE",
+              "UNKNOWN"
+            ]
+          },
+          "lastReceivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportIntervalSec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          }
+        },
+        "required": [
+          "deviceId",
+          "location",
+          "firmwareVersion",
+          "online",
+          "freshness",
+          "lastReceivedAt",
+          "reportIntervalSec"
+        ],
+        "additionalProperties": false
+      },
+      "Latest": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/Device"
+          },
+          "measurement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoredMeasurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "condition": {
+            "enum": [
+              "UNKNOWN",
+              "NORMAL",
+              "WARNING",
+              "ALERT"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            }
+          }
+        },
+        "required": [
+          "device",
+          "measurement",
+          "condition",
+          "reasons",
+          "recommendations"
+        ],
+        "additionalProperties": false,
+        "examples": [
+          {
+            "device": {
+              "deviceId": "AIRSENSE-001",
+              "location": "D9-405",
+              "firmwareVersion": "simulator-1.0.0",
+              "online": true,
+              "freshness": "FRESH",
+              "lastReceivedAt": "2026-11-06T07:00:01Z",
+              "reportIntervalSec": 30
+            },
+            "measurement": {
+              "telemetry": {
+                "schemaVersion": 1,
+                "deviceId": "AIRSENSE-001",
+                "messageId": "AIRSENSE-001:b7f3a901:123",
+                "bootId": "b7f3a901",
+                "sequence": 123,
+                "measuredAt": "2026-11-06T07:00:00Z",
+                "uptimeMs": 3690000,
+                "timeQuality": "SYNCED",
+                "reportIntervalSec": 30,
+                "values": {
+                  "temperatureC": 27.1,
+                  "humidityPct": 61.4,
+                  "gasRelative": 1.08,
+                  "dustEstimateUgM3": null
+                },
+                "raw": {
+                  "gasAdcCounts": 1474,
+                  "gasAdcMv": 1080,
+                  "dustAdcCounts": 1120,
+                  "dustAdcMv": 820
+                },
+                "quality": {
+                  "sht30": "VALID",
+                  "mq135": "VALID",
+                  "dust": "VALID"
+                },
+                "calibration": {
+                  "gasId": "gas-baseline-001",
+                  "dustId": null
+                }
+              },
+              "receivedAt": "2026-11-06T07:00:01Z"
+            },
+            "condition": "NORMAL",
+            "reasons": [],
+            "recommendations": []
+          }
+        ]
+      },
+      "MeasurementPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredMeasurement"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false,
+        "examples": [
+          {
+            "items": [
+              {
+                "telemetry": {
+                  "schemaVersion": 1,
+                  "deviceId": "AIRSENSE-001",
+                  "messageId": "AIRSENSE-001:b7f3a901:123",
+                  "bootId": "b7f3a901",
+                  "sequence": 123,
+                  "measuredAt": "2026-11-06T07:00:00Z",
+                  "uptimeMs": 3690000,
+                  "timeQuality": "SYNCED",
+                  "reportIntervalSec": 30,
+                  "values": {
+                    "temperatureC": 27.1,
+                    "humidityPct": 61.4,
+                    "gasRelative": 1.08,
+                    "dustEstimateUgM3": null
+                  },
+                  "raw": {
+                    "gasAdcCounts": 1474,
+                    "gasAdcMv": 1080,
+                    "dustAdcCounts": 1120,
+                    "dustAdcMv": 820
+                  },
+                  "quality": {
+                    "sht30": "VALID",
+                    "mq135": "VALID",
+                    "dust": "VALID"
+                  },
+                  "calibration": {
+                    "gasId": "gas-baseline-001",
+                    "dustId": null
+                  }
+                },
+                "receivedAt": "2026-11-06T07:00:01Z"
+              }
+            ],
+            "nextCursor": null
+          }
+        ]
+      },
+      "Statistics": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+          },
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "temperatureC": {
+                "$ref": "#/components/schemas/ParameterStatistics"
+              },
+              "humidityPct": {
+                "$ref": "#/components/schemas/ParameterStatistics"
+              },
+              "gasRelative": {
+                "$ref": "#/components/schemas/ParameterStatistics"
+              },
+              "dustAdcMv": {
+                "$ref": "#/components/schemas/ParameterStatistics"
+              },
+              "dustEstimateUgM3": {
+                "$ref": "#/components/schemas/ParameterStatistics"
+              }
+            },
+            "required": [
+              "temperatureC",
+              "humidityPct",
+              "gasRelative",
+              "dustAdcMv",
+              "dustEstimateUgM3"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "deviceId",
+          "from",
+          "to",
+          "parameters"
+        ],
+        "additionalProperties": false,
+        "examples": [
+          {
+            "deviceId": "AIRSENSE-001",
+            "from": "2026-11-06T07:00:00Z",
+            "to": "2026-11-06T07:01:00Z",
+            "parameters": {
+              "temperatureC": {
+                "unit": "degC",
+                "min": 27.1,
+                "max": 27.1,
+                "mean": 27.1,
+                "validCount": 1,
+                "calibrationId": null
+              },
+              "humidityPct": {
+                "unit": "%RH",
+                "min": 61.4,
+                "max": 61.4,
+                "mean": 61.4,
+                "validCount": 1,
+                "calibrationId": null
+              },
+              "gasRelative": {
+                "unit": "ratio",
+                "min": 1.08,
+                "max": 1.08,
+                "mean": 1.08,
+                "validCount": 1,
+                "calibrationId": "gas-baseline-001"
+              },
+              "dustAdcMv": {
+                "unit": "mV",
+                "min": 820,
+                "max": 820,
+                "mean": 820,
+                "validCount": 1,
+                "calibrationId": null
+              },
+              "dustEstimateUgM3": {
+                "unit": "ug/m3",
+                "min": null,
+                "max": null,
+                "mean": null,
+                "validCount": 0,
+                "calibrationId": null
+              }
+            }
+          }
+        ]
+      },
+      "ParameterStatistics": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "enum": [
+              "degC",
+              "%RH",
+              "ratio",
+              "mV",
+              "ug/m3"
+            ]
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "calibrationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "unit",
+          "min",
+          "max",
+          "mean",
+          "validCount",
+          "calibrationId"
+        ],
+        "additionalProperties": false
+      },
+      "Threshold": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "parameter": {
+            "enum": [
+              "temperatureC",
+              "humidityPct",
+              "gasRelative",
+              "dustAdcMv",
+              "dustEstimateUgM3"
+            ]
+          },
+          "unit": {
+            "enum": [
+              "degC",
+              "%RH",
+              "ratio",
+              "mV",
+              "ug/m3"
+            ]
+          },
+          "calibrationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "direction": {
+            "enum": [
+              "UPPER",
+              "LOWER",
+              "RANGE"
+            ]
+          },
+          "warning": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "alert": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "recovery": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "enterConsecutive": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "clearConsecutive": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cooldownSec": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "deviceId",
+          "parameter",
+          "unit",
+          "calibrationId",
+          "revision",
+          "direction",
+          "warning",
+          "alert",
+          "recovery",
+          "enterConsecutive",
+          "clearConsecutive",
+          "cooldownSec",
+          "enabled"
+        ],
+        "additionalProperties": false,
+        "examples": [
+          {
+            "id": "gas-rule-001",
+            "deviceId": "AIRSENSE-001",
+            "parameter": "gasRelative",
+            "unit": "ratio",
+            "calibrationId": "gas-baseline-001",
+            "revision": 1,
+            "direction": "UPPER",
+            "warning": {
+              "low": null,
+              "high": 1.2
+            },
+            "alert": {
+              "low": null,
+              "high": 1.3
+            },
+            "recovery": {
+              "low": null,
+              "high": 1.15
+            },
+            "enterConsecutive": 3,
+            "clearConsecutive": 3,
+            "cooldownSec": 600,
+            "enabled": true
+          }
+        ]
+      },
+      "ThresholdUpdate": {
+        "type": "object",
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "direction": {
+            "enum": [
+              "UPPER",
+              "LOWER",
+              "RANGE"
+            ]
+          },
+          "warning": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "alert": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "recovery": {
+            "type": "object",
+            "properties": {
+              "low": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "high": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false
+          },
+          "enterConsecutive": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "clearConsecutive": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cooldownSec": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "direction",
+          "warning",
+          "alert",
+          "recovery",
+          "enterConsecutive",
+          "clearConsecutive",
+          "cooldownSec",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "Alert": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "measurementId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 114
+          },
+          "parameter": {
+            "enum": [
+              "temperatureC",
+              "humidityPct",
+              "gasRelative",
+              "dustAdcMv",
+              "dustEstimateUgM3"
+            ]
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "enum": [
+              "degC",
+              "%RH",
+              "ratio",
+              "mV",
+              "ug/m3"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "WARNING",
+              "ALERT"
+            ]
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "ruleRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "thresholdSnapshot": {
+            "$ref": "#/components/schemas/Threshold"
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "state": {
+            "enum": [
+              "ACTIVE",
+              "RESOLVED"
+            ]
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "deviceId",
+          "location",
+          "measurementId",
+          "parameter",
+          "value",
+          "unit",
+          "severity",
+          "ruleId",
+          "ruleRevision",
+          "thresholdSnapshot",
+          "recommendation",
+          "state",
+          "openedAt",
+          "resolvedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AlertPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Alert"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "role": {
+            "const": "ADMIN"
+          },
+          "csrfToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "username",
+          "role",
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
