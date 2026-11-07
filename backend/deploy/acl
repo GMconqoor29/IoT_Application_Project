@@ -1,0 +1,11 @@
+user backend
+topic read airsense/+/telemetry
+topic read airsense/+/state
+topic read airsense/+/metadata
+topic write airsense/+/receipts
+
+user AIRSENSE-001
+topic write airsense/AIRSENSE-001/telemetry
+topic write airsense/AIRSENSE-001/state
+topic write airsense/AIRSENSE-001/metadata
+topic read airsense/AIRSENSE-001/receipts

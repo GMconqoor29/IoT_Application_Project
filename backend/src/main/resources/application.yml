@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/airsense}
+    username: ${DATABASE_USER:airsense}
+    password: ${DATABASE_PASSWORD}
+  jackson:
+    deserialization:
+      fail-on-trailing-tokens: true
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+airsense:
+  mqtt:
+    uri: ${MQTT_URI:ssl://localhost:8883}
+    username: ${MQTT_USERNAME:backend}
+    password: ${MQTT_PASSWORD}
+    enabled: ${MQTT_ENABLED:true}
+  origin: ${APP_ORIGIN:https://localhost}
+  secure-cookie: ${SECURE_COOKIE:true}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
