@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airsense.example/contracts/v1/adc-profile.schema.json",
+  "title": "AirSense trusted ESP32-S3 acquisition profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileId", "kind", "chipModel", "mode", "resolutionBits", "gasUsableMinMv", "gasUsableMaxMv", "dustUsableMinMv", "dustUsableMaxMv"],
+  "properties": {
+    "profileId": {"type": "string", "minLength": 1, "maxLength": 64},
+    "kind": {"enum": ["SIMULATOR", "HARDWARE"]},
+    "chipModel": {"const": "ESP32-S3"},
+    "mode": {"const": "ONESHOT"},
+    "resolutionBits": {"const": 12},
+    "gasUsableMinMv": {"type": "number", "minimum": 0, "maximum": 3100},
+    "gasUsableMaxMv": {"type": "number", "exclusiveMinimum": 0, "maximum": 3100},
+    "dustUsableMinMv": {"type": "number", "minimum": 0, "maximum": 3100},
+    "dustUsableMaxMv": {"type": "number", "exclusiveMinimum": 0, "maximum": 3100},
+    "commissioningReference": {"type": "string", "minLength": 1, "maxLength": 256}
+  },
+  "allOf": [{
+    "if": {"properties": {"kind": {"const": "HARDWARE"}}},
+    "then": {"properties": {"commissioningReference": {"type": "string", "minLength": 1, "maxLength": 256}}, "required": ["commissioningReference"]}
+  }]
+}

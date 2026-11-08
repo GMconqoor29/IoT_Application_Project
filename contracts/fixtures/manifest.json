@@ -1,0 +1,132 @@
+[
+  {
+    "file": "valid/telemetry-normal.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-warming-up.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-unsynced.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-sensor-fault.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-dust-estimate.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-uncalibrated.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/telemetry-dust-clipped.json",
+    "schema": "telemetry",
+    "valid": true
+  },
+  {
+    "file": "valid/metadata.json",
+    "schema": "metadata",
+    "valid": true
+  },
+  {
+    "file": "valid/state-online.json",
+    "schema": "state",
+    "valid": true
+  },
+  {
+    "file": "valid/state-last-will.json",
+    "schema": "state",
+    "valid": true
+  },
+  {
+    "file": "valid/receipt-stored.json",
+    "schema": "receipt",
+    "valid": true
+  },
+  {
+    "file": "valid/receipt-rejected.json",
+    "schema": "receipt",
+    "valid": true
+  },
+  {
+    "file": "valid/command.json",
+    "schema": "command",
+    "valid": true
+  },
+  {
+    "file": "valid/command-result.json",
+    "schema": "command-result",
+    "valid": true
+  },
+  {
+    "file": "invalid/legacy-eco2.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Legacy gas concentration field forbidden."
+  },
+  {
+    "file": "invalid/humidity-range.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Humidity exceeds physical bounds."
+  },
+  {
+    "file": "invalid/warmup-with-gas-value.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Non-valid derived gas must be null."
+  },
+  {
+    "file": "invalid/unsynced-with-timestamp.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "UNSYNCED acquisition time must be null."
+  },
+  {
+    "file": "invalid/gas-without-calibration.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Valid relative gas requires calibration."
+  },
+  {
+    "file": "invalid/dust-without-calibration.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Dust conversion requires calibration."
+  },
+  {
+    "file": "invalid/fault-with-values.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Unavailable SHT30 values must be null."
+  },
+  {
+    "file": "invalid/valid-with-null.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "VALID SHT30 requires both numeric values."
+  },
+  {
+    "file": "invalid/unsupported-version.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Only schema version 1 accepted."
+  },
+  {
+    "file": "invalid/missing-raw.json",
+    "schema": "telemetry",
+    "valid": false,
+    "reason": "Raw diagnostics object required."
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "messageId": "AIRSENSE-001:b7f3a901:123",
+  "status": "STORED",
+  "receivedAt": "2026-11-06T07:00:01Z",
+  "code": "COMMITTED",
+  "retryable": false,
+  "details": ""
+}

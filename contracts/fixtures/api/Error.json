@@ -1,0 +1,10 @@
+{
+  "code": "INVALID_REQUEST",
+  "message": "Invalid time range.",
+  "details": [
+    {
+      "field": "to",
+      "reason": "Must be greater than from."
+    }
+  ]
+}

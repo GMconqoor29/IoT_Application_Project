@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airsense.example/contracts/v1/metadata.schema.json",
+  "title": "AirSense v1 metadata",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+    },
+    "deviceType": {
+      "const": "IAQ_SENSOR_NODE"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "boardModel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "chipModel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "firmwareVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sensors": {
+      "type": "object",
+      "properties": {
+        "temperatureHumidity": {
+          "const": "SHT30"
+        },
+        "gas": {
+          "const": "MQ-135"
+        },
+        "dust": {
+          "const": "GP2Y1010AU0F"
+        }
+      },
+      "required": [
+        "temperatureHumidity",
+        "gas",
+        "dust"
+      ],
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "temperatureC",
+          "humidityPct",
+          "gasRelative",
+          "dustAdcMv",
+          "dustEstimateUgM3",
+          "SET_REPORT_INTERVAL"
+        ]
+      },
+      "allOf": [
+        {
+          "contains": {
+            "const": "temperatureC"
+          }
+        },
+        {
+          "contains": {
+            "const": "humidityPct"
+          }
+        },
+        {
+          "contains": {
+            "const": "gasRelative"
+          }
+        },
+        {
+          "contains": {
+            "const": "dustAdcMv"
+          }
+        }
+      ]
+    },
+    "adc": {
+      "type": "object",
+      "properties": {
+        "resolutionBits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "gasUsableMaxMv": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "dustUsableMaxMv": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10000
+        }
+      },
+      "required": [
+        "resolutionBits",
+        "gasUsableMaxMv",
+        "dustUsableMaxMv"
+      ],
+      "additionalProperties": false
+    },
+    "calibration": {
+      "type": "object",
+      "properties": {
+        "gasId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dustId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "gasId",
+        "dustId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "deviceId",
+    "deviceType",
+    "model",
+    "boardModel",
+    "chipModel",
+    "firmwareVersion",
+    "location",
+    "sensors",
+    "capabilities",
+    "adc",
+    "calibration"
+  ],
+  "additionalProperties": false
+}

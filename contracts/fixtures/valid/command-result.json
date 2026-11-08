@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "commandId": "interval-001",
+  "status": "APPLIED",
+  "reportIntervalSec": 60,
+  "code": "APPLIED"
+}

@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airsense.example/contracts/v1/telemetry.schema.json",
+  "title": "AirSense v1 telemetry",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+    },
+    "messageId": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}:[a-f0-9]{8,32}:(0|[1-9][0-9]{0,15})$",
+      "maxLength": 114
+    },
+    "bootId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8,32}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "measuredAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "uptimeMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "timeQuality": {
+      "enum": [
+        "SYNCED",
+        "UNSYNCED"
+      ]
+    },
+    "reportIntervalSec": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600
+    },
+    "values": {
+      "type": "object",
+      "properties": {
+        "temperatureC": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -40,
+              "maximum": 125
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "humidityPct": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gasRelative": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dustEstimateUgM3": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "temperatureC",
+        "humidityPct",
+        "gasRelative",
+        "dustEstimateUgM3"
+      ],
+      "additionalProperties": false
+    },
+    "raw": {
+      "type": "object",
+      "properties": {
+        "gasAdcCounts": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gasAdcMv": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dustAdcCounts": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dustAdcMv": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "gasAdcCounts",
+        "gasAdcMv",
+        "dustAdcCounts",
+        "dustAdcMv"
+      ],
+      "additionalProperties": false
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "sht30": {
+          "enum": [
+            "VALID",
+            "WARMING_UP",
+            "UNCALIBRATED",
+            "INVALID",
+            "UNAVAILABLE"
+          ]
+        },
+        "mq135": {
+          "enum": [
+            "VALID",
+            "WARMING_UP",
+            "UNCALIBRATED",
+            "INVALID",
+            "UNAVAILABLE"
+          ]
+        },
+        "dust": {
+          "enum": [
+            "VALID",
+            "WARMING_UP",
+            "UNCALIBRATED",
+            "INVALID",
+            "UNAVAILABLE"
+          ]
+        }
+      },
+      "required": [
+        "sht30",
+        "mq135",
+        "dust"
+      ],
+      "additionalProperties": false
+    },
+    "calibration": {
+      "type": "object",
+      "properties": {
+        "gasId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dustId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "gasId",
+        "dustId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "deviceId",
+    "messageId",
+    "bootId",
+    "sequence",
+    "measuredAt",
+    "uptimeMs",
+    "timeQuality",
+    "reportIntervalSec",
+    "values",
+    "raw",
+    "quality",
+    "calibration"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "timeQuality": {
+            "const": "SYNCED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "timeQuality": {
+            "const": "UNSYNCED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "measuredAt": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "sht30": {
+                "const": "VALID"
+              }
+            },
+            "required": [
+              "sht30"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "properties": {
+              "temperatureC": {
+                "type": "number",
+                "minimum": -40,
+                "maximum": 125
+              },
+              "humidityPct": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "sht30": {
+                "not": {
+                  "const": "VALID"
+                }
+              }
+            },
+            "required": [
+              "sht30"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "properties": {
+              "temperatureC": {
+                "type": "null"
+              },
+              "humidityPct": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "mq135": {
+                "const": "VALID"
+              }
+            },
+            "required": [
+              "mq135"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "properties": {
+              "gasRelative": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "raw": {
+            "properties": {
+              "gasAdcCounts": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+              },
+              "gasAdcMv": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            }
+          },
+          "calibration": {
+            "properties": {
+              "gasId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "mq135": {
+                "not": {
+                  "const": "VALID"
+                }
+              }
+            },
+            "required": [
+              "mq135"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "properties": {
+              "gasRelative": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "dust": {
+                "const": "VALID"
+              }
+            },
+            "required": [
+              "dust"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "raw": {
+            "properties": {
+              "dustAdcCounts": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+              },
+              "dustAdcMv": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "dust": {
+                "not": {
+                  "const": "VALID"
+                }
+              }
+            },
+            "required": [
+              "dust"
+            ]
+          }
+        },
+        "required": [
+          "quality"
+        ]
+      },
+      "then": {
+        "properties": {
+          "values": {
+            "properties": {
+              "dustEstimateUgM3": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "values": {
+            "properties": {
+              "dustEstimateUgM3": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "dustEstimateUgM3"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "quality": {
+            "properties": {
+              "dust": {
+                "const": "VALID"
+              }
+            }
+          },
+          "calibration": {
+            "properties": {
+              "dustId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

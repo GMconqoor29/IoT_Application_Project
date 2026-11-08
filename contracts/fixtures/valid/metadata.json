@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "deviceType": "IAQ_SENSOR_NODE",
+  "model": "ESP32-AirSense",
+  "boardModel": "SIMULATED-BOARD",
+  "chipModel": "SIMULATED-ESP32",
+  "firmwareVersion": "simulator-1.0.0",
+  "location": "D9-405",
+  "sensors": {
+    "temperatureHumidity": "SHT30",
+    "gas": "MQ-135",
+    "dust": "GP2Y1010AU0F"
+  },
+  "capabilities": [
+    "temperatureC",
+    "humidityPct",
+    "gasRelative",
+    "dustAdcMv"
+  ],
+  "adc": {
+    "resolutionBits": 12,
+    "gasUsableMaxMv": 3000,
+    "dustUsableMaxMv": 3000
+  },
+  "calibration": {
+    "gasId": "gas-baseline-001",
+    "dustId": null
+  }
+}

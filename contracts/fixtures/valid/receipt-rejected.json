@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "messageId": "AIRSENSE-001:b7f3a901:123",
+  "status": "REJECTED",
+  "receivedAt": "2026-11-06T07:00:01Z",
+  "code": "ID_CONFLICT",
+  "retryable": false,
+  "details": "Message identity already exists with different content."
+}

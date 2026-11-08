@@ -1,0 +1,11 @@
+{
+  "profileId": "simulator-s3-001",
+  "kind": "SIMULATOR",
+  "chipModel": "ESP32-S3",
+  "mode": "ONESHOT",
+  "resolutionBits": 12,
+  "gasUsableMinMv": 150,
+  "gasUsableMaxMv": 3000,
+  "dustUsableMinMv": 150,
+  "dustUsableMaxMv": 3000
+}

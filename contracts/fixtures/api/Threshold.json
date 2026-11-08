@@ -1,0 +1,25 @@
+{
+  "id": "gas-rule-001",
+  "deviceId": "AIRSENSE-001",
+  "parameter": "gasRelative",
+  "unit": "ratio",
+  "calibrationId": "gas-baseline-001",
+  "revision": 1,
+  "direction": "UPPER",
+  "warning": {
+    "low": null,
+    "high": 1.2
+  },
+  "alert": {
+    "low": null,
+    "high": 1.3
+  },
+  "recovery": {
+    "low": null,
+    "high": 1.15
+  },
+  "enterConsecutive": 3,
+  "clearConsecutive": 3,
+  "cooldownSec": 600,
+  "enabled": true
+}

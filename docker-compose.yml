@@ -1,0 +1,57 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+
+  database:
+    image: postgres:17-alpine
+    container_name: iot-postgres
+    environment:
+      POSTGRES_DB: airsense
+      POSTGRES_USER: airsense
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-airsense_local_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airsense -d airsense"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: iot-backend
+    depends_on:
+      database:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/airsense
+      DATABASE_USER: airsense
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-airsense_local_pass}
+      MQTT_URI: tcp://mosquitto:1883
+      MQTT_USERNAME: backend
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-airsense_mqtt_pass}
+      MQTT_ENABLED: "true"
+      APP_ORIGIN: ${APP_ORIGIN:-http://127.0.0.1:5173}
+      SECURE_COOKIE: "false"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

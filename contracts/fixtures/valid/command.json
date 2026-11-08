@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "AIRSENSE-001",
+  "commandId": "interval-001",
+  "issuedAt": "2026-11-06T07:00:00Z",
+  "expiresAt": "2026-11-06T07:01:00Z",
+  "type": "SET_REPORT_INTERVAL",
+  "reportIntervalSec": 60
+}

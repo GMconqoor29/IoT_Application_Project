@@ -1,0 +1,8 @@
+{
+  "name": "airsense-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node tools/check.mjs" },
+  "devDependencies": { "ajv": "8.17.1", "ajv-formats": "3.0.1" }
+}
