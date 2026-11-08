@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <DHT.h>
 
 struct DhtReading {
     float temperatureC;

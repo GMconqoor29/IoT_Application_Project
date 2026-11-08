@@ -11,13 +11,6 @@
 #define DHT_PIN             4
 #define DHT_TYPE            DHT22
 
-// [MQ135] Tạm thời tắt chân analog của MQ135
-// #define MQ135_PIN        5   // Analog output (AO) nối vào GPIO 5 (ADC1)
-// #define MQ135_RLOAD      10.0f
-// #define MQ135_RZERO      64.80f
-// #define MQ135_PARA       116.6020682f
-// #define MQ135_PARB       2.769034857f
-
 // Chân I2C cho cảm biến SCD40 trên ESP32-S3
 #define I2C_SDA_PIN         8
 #define I2C_SCL_PIN         9
@@ -35,6 +28,11 @@
 
 #define BACKUP_WIFI_2_SSID  ""
 #define BACKUP_WIFI_2_PASS  ""
+
+// Giảm công suất phát Wi-Fi để tránh sụt áp (lỗi "Brownout detector was triggered")
+// khi cấp nguồn yếu qua USB. Comment dòng dưới để dùng công suất mặc định (~19.5 dBm).
+// Các mức khác: WIFI_POWER_2dBm, WIFI_POWER_5dBm, WIFI_POWER_11dBm, WIFI_POWER_15dBm ...
+#define WIFI_TX_POWER       WIFI_POWER_8_5dBm
 
 // ================= CẤU HÌNH MẶC ĐỊNH MQTT BROKER =================
 // Ngoài việc sửa ở đây, bạn có thể đổi trực tiếp qua Serial Monitor (Cách 2 - lưu Flash NVS):
