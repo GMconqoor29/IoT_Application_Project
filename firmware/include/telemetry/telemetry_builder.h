@@ -1,12 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-
-struct DhtReading {
-    float temperatureC;
-    float humidityPct;
-    bool valid;
-};
+#include "sensors/sensor_types.h"
 
 class TelemetryBuilder {
 public:
@@ -15,7 +10,7 @@ public:
     void begin();
 
     String buildJson(
-        const DhtReading& reading,
+        const EnvironmentReading& reading,
         uint32_t uptimeMs,
         uint32_t reportIntervalSec
     );

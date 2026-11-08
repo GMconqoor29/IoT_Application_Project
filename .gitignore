@@ -17,3 +17,8 @@ mosquitto/log/*
 **/.venv/
 **/.env
 **/.DS_Store
+
+.vscode/
+.idea/
+
+*.bak

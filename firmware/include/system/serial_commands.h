@@ -2,8 +2,8 @@
 
 #include <Arduino.h>
 
-#include "connectivity.h"
-#include "device_config.h"
+#include "connectivity/connectivity.h"
+#include "system/device_config.h"
 
 // Đổi cấu hình Wi-Fi / MQTT trực tiếp qua Serial Monitor (USB hoặc UART):
 //   wifi <SSID> <PASSWORD>
