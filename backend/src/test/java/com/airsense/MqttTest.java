@@ -3,9 +3,9 @@ package com.airsense;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.airsense.common.Contracts;
-import com.airsense.common.Json;
-import com.airsense.mqtt.MqttGateway;
+import com.airsense.common.ContractValidator;
+import com.airsense.common.JsonSupport;
+import com.airsense.ingestion.MqttClientConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +43,7 @@ class MqttTest {
   private GenericContainer<?> broker;
   private ConfigurableApplicationContext application;
   private JdbcTemplate db;
-  private Contracts contracts;
+  private ContractValidator contracts;
   private String uri;
   private String http;
   private long sequence = System.currentTimeMillis();
@@ -90,9 +90,14 @@ class MqttTest {
         .atMost(Duration.ofSeconds(20))
         .until(
             () ->
-                application.getBean(MqttGateway.class).health().getStatus().getCode().equals("UP"));
+                application
+                    .getBean(MqttClientConfig.class)
+                    .health()
+                    .getStatus()
+                    .getCode()
+                    .equals("UP"));
     http = "http://localhost:" + application.getEnvironment().getProperty("local.server.port");
-    contracts = new Contracts();
+    contracts = new ContractValidator();
   }
 
   @AfterAll
@@ -123,20 +128,20 @@ class MqttTest {
               .toString());
       publish(client, p);
       assertEquals(first, receipt(receipts, p));
-      var reordered = Json.MAPPER.createObjectNode();
+      var reordered = JsonSupport.MAPPER.createObjectNode();
       var names = new java.util.ArrayList<String>();
       p.fieldNames().forEachRemaining(names::add);
       java.util.Collections.reverse(names);
       for (String name : names) reordered.set(name, p.get(name));
       client.publish(
           "airsense/AIRSENSE-001/telemetry",
-          Json.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(reordered),
+          JsonSupport.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(reordered),
           1,
           false);
       assertEquals(first, receipt(receipts, p));
       assertEquals(1, count(p));
       var latest =
-          Json.parse(
+          JsonSupport.parse(
               new RestTemplate()
                   .getForObject(http + "/api/devices/AIRSENSE-001/latest", String.class));
       assertEquals(
@@ -197,7 +202,7 @@ class MqttTest {
   private ObjectNode telemetry() throws Exception {
     var p =
         (ObjectNode)
-            Json.parse(
+            JsonSupport.parse(
                 Files.readString(Path.of("../contracts/fixtures/valid/telemetry-normal.json")));
     p.put("sequence", ++sequence);
     p.put("messageId", "AIRSENSE-001:b7f3a901:" + sequence);
@@ -221,13 +226,15 @@ class MqttTest {
         1,
         (topic, message) -> {
           assertFalse(message.isRetained());
-          receipts.offer(Json.parse(new String(message.getPayload(), StandardCharsets.UTF_8)));
+          receipts.offer(
+              JsonSupport.parse(new String(message.getPayload(), StandardCharsets.UTF_8)));
         });
     return receipts;
   }
 
   private void publish(MqttClient client, ObjectNode p) throws Exception {
-    client.publish("airsense/AIRSENSE-001/telemetry", Json.MAPPER.writeValueAsBytes(p), 1, false);
+    client.publish(
+        "airsense/AIRSENSE-001/telemetry", JsonSupport.MAPPER.writeValueAsBytes(p), 1, false);
   }
 
   private JsonNode receipt(ArrayBlockingQueue<JsonNode> receipts, ObjectNode p) throws Exception {

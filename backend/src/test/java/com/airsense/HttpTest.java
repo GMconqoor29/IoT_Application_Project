@@ -60,10 +60,20 @@ class HttpTest {
 
   @Test
   void publicQueriesMatchOpenApiAndWritesRequireAuthentication() throws Exception {
+    var devices = http.getForEntity("/api/devices", String.class);
+    assertEquals(200, devices.getStatusCode().value());
+    assertEquals(
+        "AIRSENSE-001",
+        JsonSupport.parse(devices.getBody()).path("items").get(0).path("deviceId").asText());
+    var rules = http.getForEntity("/api/thresholds?deviceId=AIRSENSE-001", String.class);
+    assertEquals(200, rules.getStatusCode().value());
+    assertFalse(JsonSupport.parse(rules.getBody()).path("items").isEmpty());
+    for (var rule : JsonSupport.parse(rules.getBody()).path("items"))
+      validate("Threshold", rule.toString());
     var latest = http.getForEntity("/api/devices/AIRSENSE-001/latest", String.class);
     assertEquals(200, latest.getStatusCode().value());
     validate("Latest", latest.getBody());
-    assertTrue(Json.parse(latest.getBody()).path("measurement").isNull());
+    assertTrue(JsonSupport.parse(latest.getBody()).path("measurement").isNull());
     var history =
         http.getForEntity(
             "/api/devices/AIRSENSE-001/measurements?from=2026-11-01T00:00:00Z&to=2026-11-02T00:00:00Z",
@@ -97,12 +107,12 @@ class HttpTest {
   private void validate(String name, String body) throws Exception {
     var root =
         (com.fasterxml.jackson.databind.node.ObjectNode)
-            Json.MAPPER.readTree(getClass().getResourceAsStream("/contracts/openapi.json"));
+            JsonSupport.MAPPER.readTree(getClass().getResourceAsStream("/contracts/openapi.json"));
     root.put("$ref", "#/components/schemas/" + name);
     var schema =
         JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
             .getSchema(
                 root, SchemaValidatorsConfig.builder().formatAssertionsEnabled(true).build());
-    assertTrue(schema.validate(Json.parse(body)).isEmpty(), body);
+    assertTrue(schema.validate(JsonSupport.parse(body)).isEmpty(), body);
   }
 }

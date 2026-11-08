@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://airsense.example/contracts/v1/command.schema.json",
+  "title": "AirSense v1 command",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,63}$"
+    },
+    "commandId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "issuedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$"
+    },
+    "type": {
+      "const": "SET_REPORT_INTERVAL"
+    },
+    "reportIntervalSec": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3600
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "deviceId",
+    "commandId",
+    "issuedAt",
+    "expiresAt",
+    "type",
+    "reportIntervalSec"
+  ],
+  "additionalProperties": false
+}
