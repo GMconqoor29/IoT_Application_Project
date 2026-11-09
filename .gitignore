@@ -1,0 +1,22 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/.browse.c_cpp.db*
+firmware/.vscode/c_cpp_properties.json
+firmware/.vscode/launch.json
+firmware/.vscode/ipch
+
+# Mosquitto runtime data & logs
+mosquitto/data/*
+!mosquitto/data/.gitkeep
+mosquitto/log/*
+!mosquitto/log/.gitkeep
+
+# Node / Python / Env
+**/node_modules/
+**/__pycache__/
+**/.venv/
+**/.env
+**/.DS_Store
+
+# Agents
+AGENTS.md
