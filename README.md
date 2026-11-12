@@ -70,28 +70,39 @@ flowchart LR
 ## Project Structure
 
 ```text
-├── backend/               # Spring Boot 3 + Java 21 application
+├── backend/               # Spring Boot 3.5.7 + Java 21 application
 │   ├── deploy/            # Deployment configurations & Mosquitto specs
 │   ├── provision/         # Database init and simulator provisioning SQL scripts
-│   ├── src/               # Application source code and unit/integration tests
-│   ├── pom.xml            # Maven build configuration
+│   ├── src/               # Feature packages (auth, ingestion, monitoring, threshold, operations, common)
+│   ├── pom.xml            # Maven build & Spotless configuration
 │   └── Dockerfile         # Multi-stage container build
 ├── contracts/             # Shared contracts & API specifications
 │   ├── fixtures/          # Valid and invalid JSON test fixtures
-│   ├── schemas/           # JSON Schemas (telemetry, state, metadata, receipts)
+│   ├── schemas/           # JSON Schemas (telemetry, state, metadata, receipts, command, adc-profile)
+│   ├── tools/             # Schema & semantic validators (validate.mjs, check.mjs)
 │   ├── openapi.json       # OpenAPI 3.1 REST API specification
 │   └── package.json       # Contract verification scripts
 ├── docs/                  # Project documentation & topic references
 ├── firmware/              # ESP32-S3 PlatformIO firmware
-│   ├── include/           # Modular headers (config, connectivity, scd40, logger)
-│   ├── src/               # Firmware source (main, connectivity, device_config, scd40)
+│   ├── include/           # Domain headers
+│   │   ├── config/        # pins.h, device_constants.h, mqtt_ca.h, secrets.example.h, secrets.h
+│   │   ├── connectivity/  # Wi-Fi (WiFiMulti) + MQTT (Plain TCP 1883 / TLS 8883)
+│   │   ├── sensors/       # EnvironmentSensor facade, SCD40 I2C driver, sensor_types.h
+│   │   ├── system/        # DeviceConfig (NVS), dual Logger, SerialCommands CLI
+│   │   ├── telemetry/     # Contract-compliant JSON TelemetryBuilder
+│   │   └── config.h       # Umbrella configuration header
+│   ├── src/               # Domain implementations and main.cpp entry point
+│   ├── test/              # Host C++ unit tests (test_firmware.cpp, mocks/, run_tests.sh)
+│   ├── README.md          # Firmware architecture, configuration, and testing guide
 │   └── platformio.ini     # PlatformIO environment, board, and library definitions
 ├── frontend/              # React 18 + Vite dashboard
-│   ├── src/               # UI components, API client, charts, state management
+│   ├── src/               # Feature modules (app/, features/, shared/, fixtures/)
+│   ├── tests/             # Node model unit tests
 │   ├── package.json       # Frontend dependencies and scripts
 │   └── vite.config.js     # Dev server proxy configuration
 ├── mosquitto/             # MQTT broker configuration and persistent storage
 │   └── config/mosquitto.conf
+├── AGENTS.md              # Project coding conventions and architectural rules
 ├── docker-compose.yml     # Compose manifest for Broker, PostgreSQL, and Backend
 ├── start-web.sh           # Automated boot script for local development
 └── README.md              # Project documentation
@@ -132,7 +143,7 @@ All telemetry follows the contract specifications in `contracts/schemas/`:
   "uptimeMs": 45200,
   "timeQuality": "SYNCED",
   "measuredAt": "2026-11-08T06:30:00Z",
-  "reportIntervalSec": 10,
+  "reportIntervalSec": 30,
   "values": {
     "temperatureC": 26.4,
     "humidityPct": 58.2,
@@ -181,7 +192,7 @@ chmod +x start-web.sh
 ### What this script does:
 1. Builds and launches the Mosquitto, PostgreSQL, and Spring Boot containers in background mode.
 2. Waits for PostgreSQL and Flyway schema migrations to complete.
-3. Automatically provisions test device `AIRSENSE-001` (matching `firmware/include/config.h`).
+3. Automatically provisions test device `AIRSENSE-001` (matching `firmware/include/config/device_constants.h`).
 4. Installs frontend npm packages (if needed) and launches the Vite dev server at **`http://localhost:5173`**.
 
 ---
@@ -227,11 +238,12 @@ Open **`http://localhost:5173`** in your browser.
    ```bash
    cd firmware
    ```
-2. Adjust your Wi-Fi SSID and MQTT broker host in `firmware/include/config.h`:
+2. Copy `include/config/secrets.example.h` to `include/config/secrets.h` and configure your Wi-Fi SSID and MQTT broker host:
    ```cpp
    #define DEFAULT_WIFI_SSID   "Your_WiFi_SSID"
    #define DEFAULT_WIFI_PASS   "Your_WiFi_Password"
    #define DEFAULT_MQTT_HOST   "192.168.1.94" // IP of machine hosting Mosquitto
+   #define DEFAULT_MQTT_PORT   1883
    ```
 3. Build and upload firmware to the ESP32-S3:
    ```bash
@@ -253,7 +265,7 @@ The firmware supports real-time configuration directly through the Serial Monito
 | `status` | `status` | Display current device ID, Wi-Fi IP, and MQTT connection state |
 | `wifi` | `wifi <SSID> <PASSWORD>` | Update Wi-Fi credentials and persist to Flash NVS |
 | `mqtt` | `mqtt <HOST> [PORT] [USER] [PASS]` | Update MQTT broker details and reconnect immediately |
-| `reset` | `reset` | Clear NVS settings and restore defaults from `config.h` |
+| `reset` | `reset` | Clear NVS settings and restore defaults from `include/config/secrets.h` |
 | `help` | `help` or `?` | Print available command syntax |
 
 ---
@@ -286,13 +298,19 @@ cd frontend
 npm test
 ```
 
+### 5. Run Firmware Unit Tests & Contract Verification
+Compile and run the host C++ unit tests for all firmware modules (`Logger`, `Scd40`, `EnvironmentSensor`, `DeviceConfig`, `Connectivity`, `SerialCommands`, `TelemetryBuilder`) and validate generated JSON payloads against `contracts/schemas/telemetry.schema.json`:
+```bash
+./firmware/test/run_tests.sh
+```
+
 ---
 
 ## Troubleshooting
 
 ### 1. ESP32-S3 Brownout Loop (`Brownout detector was triggered`)
 - **Cause**: Current spikes when the ESP32 Wi-Fi radio transmits under weak USB power.
-- **Solution 1**: Ensure `WIFI_TX_POWER` is defined in `firmware/include/config.h`:
+- **Solution 1**: Ensure `WIFI_TX_POWER` is defined in `firmware/include/config/device_constants.h`:
   ```cpp
   #define WIFI_TX_POWER WIFI_POWER_8_5dBm
   ```

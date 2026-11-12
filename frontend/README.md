@@ -1,6 +1,6 @@
 # AirSense dashboard
 
-Local React + Recharts frontend for the scope in `../PLAN.md`, using `../contracts/openapi.json` and the shared fixtures directly. No broker or database connection is made from the browser.
+Local React + Recharts frontend for the AirSense workspace (see `../README.md`), using `../contracts/openapi.json` and the shared fixtures directly. No broker or database connection is made from the browser.
 
 ## Source organization
 
@@ -51,4 +51,4 @@ Imports use the existing API and telemetry JSON files; fixture timestamps are ne
 
 ## Verification
 
-`npm test` checks expiry, quality/null handling, chart gaps, calibration boundaries, range limits, threshold ordering and cursor traversal against shared fixtures. `npm run build` verifies the production bundle. To review manually, exercise all preview scenarios; use History's custom range and dust channels; verify Settings is read-only before login. With the backend running, check sign-in, CSRF-protected edits, revision conflict, logout, API outage, device changes and reconnect. Full hardware/trial acceptance remains under PLAN.md.
+`npm test` checks expiry, quality/null handling, chart gaps, calibration boundaries, range limits, threshold ordering and cursor traversal against shared fixtures. `npm run build` verifies the production bundle. To review manually, exercise all preview scenarios; use History's custom range and dust channels; verify Settings is read-only before login. With the backend running, check sign-in, CSRF-protected edits, revision conflict, logout, API outage, device changes and reconnect.

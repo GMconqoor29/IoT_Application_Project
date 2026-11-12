@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-// Cấu hình Wi-Fi & MQTT đang dùng lúc chạy.
+// Runtime Wi-Fi and MQTT configuration.
 struct DeviceConfig {
   String wifiSsid;
   String wifiPass;
@@ -11,13 +11,16 @@ struct DeviceConfig {
   String mqttUser;
   String mqttPass;
 
-  // Giá trị mặc định lấy từ include/config.h.
+  // Build configuration using compile-time defaults.
   static DeviceConfig defaults();
 
-  // Lưu vào Flash NVS (namespace "airsense") và cập nhật cấu hình hiện tại.
+  // Load saved NVS settings over defaults.
+  static DeviceConfig load();
+
+  // Save runtime settings to NVS.
   void saveWifi(const String &ssid, const String &pass);
   void saveMqtt(const String &host, uint16_t port, const String &user, const String &pass);
 
-  // Xoá cấu hình đã lưu trong NVS và quay về mặc định trong config.h.
+  // Clear NVS settings and restore defaults.
   void resetToDefaults();
 };

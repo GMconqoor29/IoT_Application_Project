@@ -2,47 +2,12 @@
 
 #include <Arduino.h>
 #include <DHT.h>
+#include <WiFi.h>
 
-// ================= ĐỊNH DANH THIẾT BỊ =================
-#define DEVICE_ID           "AIRSENSE-001"
-#define DEFAULT_BOOT_ID     "b7f3a901"  // Khớp với boot_id đã provision trong backend/provision/simulator.sql
+// Public configuration
+#include "config/pins.h"
+#include "config/device_constants.h"
+#include "config/mqtt_ca.h"
 
-// ================= CẤU HÌNH CHÂN CẢM BIẾN =================
-#define DHT_PIN             4
-#define DHT_TYPE            DHT22
-
-// Chân I2C cho cảm biến SCD40 trên ESP32-S3
-#define I2C_SDA_PIN         8
-#define I2C_SCL_PIN         9
-#define SCD40_ADDR          0x62
-
-// ================= CẤU HÌNH MẶC ĐỊNH WI-FI (CÁCH 1: WIFIMULTI) =================
-// Mạng Wi-Fi chính (mặc định)
-#define DEFAULT_WIFI_SSID   "Minh"
-#define DEFAULT_WIFI_PASS   "minhminhminh"
-
-// Mạng Wi-Fi dự phòng (VD: Hotspot điện thoại / Wi-Fi phòng Lab khi đi demo)
-// Để trống "" nếu chưa dùng; nếu điền tên mạng, WiFiMulti sẽ tự động quét & kết nối
-#define BACKUP_WIFI_1_SSID  ""
-#define BACKUP_WIFI_1_PASS  ""
-
-#define BACKUP_WIFI_2_SSID  ""
-#define BACKUP_WIFI_2_PASS  ""
-
-// Giảm công suất phát Wi-Fi để tránh sụt áp (lỗi "Brownout detector was triggered")
-// khi cấp nguồn yếu qua USB. Comment dòng dưới để dùng công suất mặc định (~19.5 dBm).
-// Các mức khác: WIFI_POWER_2dBm, WIFI_POWER_5dBm, WIFI_POWER_11dBm, WIFI_POWER_15dBm ...
-#define WIFI_TX_POWER       WIFI_POWER_8_5dBm
-
-// ================= CẤU HÌNH MẶC ĐỊNH MQTT BROKER =================
-// Ngoài việc sửa ở đây, bạn có thể đổi trực tiếp qua Serial Monitor (Cách 2 - lưu Flash NVS):
-//   wifi <SSID> <PASSWORD>
-//   mqtt <HOST> [PORT] [USER] [PASSWORD]
-
-#define DEFAULT_MQTT_HOST   "192.168.1.94"
-#define DEFAULT_MQTT_PORT   1883
-#define DEFAULT_MQTT_USER   ""          // Để trống nếu Mosquitto chạy allow_anonymous true
-#define DEFAULT_MQTT_PASS   ""
-
-// Chu kỳ đọc và gửi bản tin Telemetry (giây)
-#define REPORT_INTERVAL_SEC 10
+// Private credentials
+#include "config/secrets.h"

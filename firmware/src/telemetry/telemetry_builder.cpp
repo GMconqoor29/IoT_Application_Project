@@ -1,4 +1,4 @@
-#include "telemetry_builder.h"
+#include "telemetry/telemetry_builder.h"
 #include "config.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -48,7 +48,7 @@ String TelemetryBuilder::getIsoTimestamp(bool& synced) {
 }
 
 String TelemetryBuilder::buildJson(
-    const DhtReading& reading,
+    const EnvironmentReading& reading,
     uint32_t uptimeMs,
     uint32_t reportIntervalSec
 ) {
@@ -86,7 +86,7 @@ String TelemetryBuilder::buildJson(
     // Converted sensor values
     JsonObject values = doc["values"].to<JsonObject>();
 
-    if (reading.valid) {
+    if (reading.temperatureHumidityValid) {
         values["temperatureC"] = reading.temperatureC;
         values["humidityPct"] = reading.humidityPct;
     } else {
@@ -108,7 +108,7 @@ String TelemetryBuilder::buildJson(
     // Sensor quality
     JsonObject quality = doc["quality"].to<JsonObject>();
 
-    quality["sht30"] = reading.valid
+    quality["sht30"] = reading.temperatureHumidityValid
         ? "VALID"
         : "INVALID";
 

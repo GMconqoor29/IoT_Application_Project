@@ -1,6 +1,6 @@
 # AirSense data contract version 1
 
-Status: implementation baseline for review. Current-alert-only scope amendment: 7 November 2026. This implements the shared-contract step in [PLAN.md](../PLAN.md). It does not implement a broker, database, firmware, API server, or dashboard. Real board profiles and calibration records remain hardware commissioning work. All fixture voltages, baselines, conversions, and thresholds are synthetic software examples, not health limits or verified sensor calibration.
+Status: implementation baseline for review. Current-alert-only scope amendment: 7 November 2026. This implements the shared-contract layer documented in [README.md](../README.md). It does not implement a broker, database, firmware, API server, or dashboard. Real board profiles and calibration records remain hardware commissioning work. All fixture voltages, baselines, conversions, and thresholds are synthetic software examples, not health limits or verified sensor calibration.
 
 ## Files and validation
 

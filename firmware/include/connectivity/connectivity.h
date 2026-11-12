@@ -3,9 +3,10 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <WiFiMulti.h>
 
-#include "device_config.h"
+#include "system/device_config.h"
 
 // Quản lý kết nối Wi-Fi (WiFiMulti + mạng dự phòng) và MQTT broker,
 // tự động kết nối lại trong loop().
@@ -32,14 +33,17 @@ public:
 private:
   DeviceConfig &config;
   WiFiMulti wifiMulti;
-  WiFiClient wifiClient;
+  WiFiClient plainClient;
+  WiFiClientSecure secureClient;
   PubSubClient mqttClient;
 
   unsigned long lastWifiAttempt = 0;
   unsigned long lastMqttAttempt = 0;
+  bool timeSynced = false;
 
   void registerAccessPoints();
   void connectWiFi();
   void ensureWiFiConnected();
   void ensureMqttConnected();
+  bool synchronizeTime();
 };
