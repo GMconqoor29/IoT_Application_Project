@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "name": "ESP32-S3 Firmware",
+      "includePath": [
+        "${workspaceFolder}/firmware/include",
+        "${workspaceFolder}/firmware/src",
+        "${workspaceFolder}/firmware/.pio/libdeps/esp32-s3-devkitm-1/DHT sensor library",
+        "${workspaceFolder}/firmware/.pio/libdeps/esp32-s3-devkitm-1/Adafruit Unified Sensor",
+        "${workspaceFolder}/firmware/.pio/libdeps/esp32-s3-devkitm-1/ArduinoJson/src",
+        "${workspaceFolder}/firmware/.pio/libdeps/esp32-s3-devkitm-1/PubSubClient/src",
+        "${env:HOME}/.platformio/packages/framework-arduinoespressif32/cores/esp32",
+        "${env:HOME}/.platformio/packages/framework-arduinoespressif32/variants/esp32s3",
+        "${env:HOME}/.platformio/packages/framework-arduinoespressif32/libraries/**",
+        "${workspaceFolder}/firmware/test/mocks"
+      ],
+      "defines": [
+        "ARDUINO=10812",
+        "ESP32",
+        "ARDUINO_USB_MODE=1",
+        "ARDUINO_USB_CDC_ON_BOOT=1"
+      ],
+      "compilerPath": "/usr/bin/g++",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}

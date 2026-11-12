@@ -1,6 +1,8 @@
 #pragma once
 
-#include <Arduino.h>
+#ifndef PROGMEM
+#define PROGMEM
+#endif
 
 // EMQX Cloud Root CA
 // This certificate is public trust material.

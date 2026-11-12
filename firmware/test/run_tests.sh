@@ -6,6 +6,18 @@ FIRMWARE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_BIN="/tmp/airsense_firmware_tests"
 
 echo "[1/3] Compiling firmware components and unit tests..."
+g++ -std=c++17 -Wall -Wextra -Werror -fsyntax-only -x c++ \
+  -include "$FIRMWARE_DIR/include/config/device_constants.h" \
+  -include "$FIRMWARE_DIR/include/config/mqtt_ca.h" \
+  -include "$FIRMWARE_DIR/include/config/pins.h" \
+  -include "$FIRMWARE_DIR/include/config/secrets.example.h" \
+  /dev/null
+
+g++ -std=c++17 -Wall -Wextra -fsyntax-only \
+  -I"$SCRIPT_DIR/mocks" \
+  -I"$FIRMWARE_DIR/include" \
+  "$FIRMWARE_DIR/src/main.cpp"
+
 g++ -std=c++17 -Wall -Wextra \
   -I"$SCRIPT_DIR/mocks" \
   -I"$FIRMWARE_DIR/include" \

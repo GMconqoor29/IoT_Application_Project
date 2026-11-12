@@ -4,6 +4,11 @@ set -e
 cd "$(dirname "$0")"
 
 echo "=== [1/4] Khoi chay Mosquitto, PostgreSQL va Backend qua Docker Compose ==="
+if ip -4 addr show 2>/dev/null | grep -q "172\.21\.0\.1/"; then
+  echo " -> Phat hien xung dot dai IP 172.21.0.1 voi mang Wi-Fi truong, dang tao lai mang Docker..."
+  docker compose down 2>/dev/null || true
+  docker network prune -f >/dev/null 2>&1 || true
+fi
 docker compose up -d --build
 
 echo "=== [2/4] Cho Backend tao bang du lieu (Flyway migration) ==="

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Arduino.h>
-
 // ================= DEVICE IDENTITY =================
 #define DEVICE_ID           "AIRSENSE-001"
 #define DEFAULT_BOOT_ID      "b7f3a901"
