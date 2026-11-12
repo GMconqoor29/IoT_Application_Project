@@ -2,7 +2,17 @@
 
 Local React + Recharts frontend for the scope in `../PLAN.md`, using `../contracts/openapi.json` and the shared fixtures directly. No broker or database connection is made from the browser.
 
-## Start
+## Source organization
+
+`src/app/App.jsx` composes the workspace and owns navigation/session state. Feature modules live in
+`src/features/monitoring`, `src/features/history`, and `src/features/settings`. Monitoring polling is
+isolated in `useMonitoring`; pure feature models are tested directly. Shared UI, formatting, and HTTP
+transport live in `src/shared`. Synthetic preview data lives separately in `src/fixtures`.
+
+Follow `../AGENTS.md` for frontend and backend conventions. Run `npm run format` to format source,
+tests, styles, and configuration; run `npm run format:check` to check without writing.
+
+## Local development
 
 Node.js 20.19+ (or 22.12+) and npm are required.
 

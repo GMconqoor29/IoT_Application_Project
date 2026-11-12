@@ -87,6 +87,20 @@ for (const [schema, patch] of [
 }
 
 const api = readJson('openapi.json');
+check('current-alert scope excludes historical endpoint and models', () => {
+  assert.equal(api.info.version, '1.1.0');
+  assert.equal(api.paths['/api/alerts'], undefined);
+  assert.equal(api.components.schemas.Alert, undefined);
+  assert.equal(api.components.schemas.AlertPage, undefined);
+});
+check('notification suppression belongs to backend configuration', () => {
+  for (const name of ['Threshold', 'ThresholdUpdate']) {
+    for (const field of ['enterConsecutive', 'clearConsecutive', 'cooldownSec']) {
+      assert.equal(api.components.schemas[name].properties[field], undefined);
+      assert.equal(api.components.schemas[name].required.includes(field), false);
+    }
+  }
+});
 check('OpenAPI references resolve', () => {
   const visit = value => {
     if (!value || typeof value !== 'object') return;
@@ -132,5 +146,8 @@ for (const [path, methods] of Object.entries(api.paths)) {
       assert.ok(operation.responses);
     });
   }
+}
+for (const [index, fixture] of readJson('fixtures/canonical.json').entries()) {
+  check(`cross-language canonical fixture ${index}`, () => assert.equal(canonical(fixture.input), fixture.expected));
 }
 console.log(`\n${passed} contract checks passed. These do not test a broker, server, or hardware.`);

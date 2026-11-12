@@ -2,11 +2,11 @@ package com.airsense;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.airsense.admin.Admin;
-import com.airsense.analysis.Conditions;
+import com.airsense.auth.*;
 import com.airsense.common.*;
-import com.airsense.ingestion.Ingestion;
-import com.airsense.measurement.Measurements;
+import com.airsense.ingestion.*;
+import com.airsense.monitoring.*;
+import com.airsense.threshold.*;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.*;
 import java.time.*;
@@ -26,11 +26,15 @@ import org.springframework.mock.web.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PostgresTest {
   JdbcTemplate db;
-  Ingestion ingestion;
-  Measurements measurements;
-  Conditions conditions;
-  Admin admin;
-  Contracts contracts;
+  IngestionService ingestion;
+  MonitoringService measurements;
+  MonitoringRepository monitoringRepository;
+  AuthController authController;
+  AdminGuard guard;
+
+  AuthService admin;
+  ThresholdService thresholds;
+  ContractValidator contracts;
   long sequence = 1000;
   String testSchema;
   DriverManagerDataSource source;
@@ -56,13 +60,24 @@ class PostgresTest {
       try (var connection = ds.getConnection()) {
         ScriptUtils.executeSqlScript(connection, new FileSystemResource("provision/simulator.sql"));
       }
-    contracts = new Contracts();
+    contracts = new ContractValidator();
     var manager = new DataSourceTransactionManager(ds);
-    ingestion = new Ingestion(db, contracts, manager);
-    measurements = new Measurements(db);
-    conditions = new Conditions(db, measurements);
-    conditions.refresh();
-    admin = new Admin(db, contracts, conditions, manager, "http://localhost:8080", false);
+    var clock = Clock.systemUTC();
+    ingestion =
+        new IngestionService(
+            new IngestionRepository(db), new TelemetryValidator(contracts), manager);
+    thresholds = new ThresholdService(new ThresholdRepository(db), new ThresholdValidator());
+    monitoringRepository = new MonitoringRepository(db);
+    measurements =
+        new MonitoringService(
+            monitoringRepository,
+            thresholds,
+            new FreshnessPolicy(clock),
+            new ConditionEvaluator(),
+            clock);
+    admin = new AuthService(new AuthRepository(db), manager, "http://localhost:8080", clock);
+    guard = new AdminGuard(admin);
+    authController = new AuthController(admin, contracts, false);
   }
 
   @AfterAll
@@ -74,7 +89,7 @@ class PostgresTest {
   ObjectNode payload() throws Exception {
     var p =
         (ObjectNode)
-            Json.parse(
+            JsonSupport.parse(
                 Files.readString(Path.of("../contracts/fixtures/valid/telemetry-normal.json")));
     long seq = ++sequence;
     p.put("sequence", seq);
@@ -85,7 +100,7 @@ class PostgresTest {
     return p;
   }
 
-  Ingestion.Result ingest(ObjectNode p) {
+  IngestionModels.Result ingest(ObjectNode p) {
     return ingestion.accept(
         "airsense/AIRSENSE-001/telemetry",
         p.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),
@@ -98,7 +113,7 @@ class PostgresTest {
     var p = payload();
     var first = ingest(p);
     assertTrue(first.inserted());
-    contracts.validate("receipt", Json.MAPPER.valueToTree(first.receipt()));
+    contracts.validate("receipt", JsonSupport.MAPPER.valueToTree(first.receipt()));
     assertEquals(first.receipt(), ingest(p).receipt());
     assertEquals(
         1,
@@ -107,8 +122,8 @@ class PostgresTest {
             Integer.class,
             p.path("messageId").asText()));
     ((ObjectNode) p.path("values")).put("temperatureC", 28);
-    assertEquals("ID_CONFLICT", ingest(p).receipt().get("code"));
-    assertEquals("ID_CONFLICT", ingest(p).receipt().get("code"));
+    assertEquals("ID_CONFLICT", ingest(p).receipt().code());
+    assertEquals("ID_CONFLICT", ingest(p).receipt().code());
     assertThrows(
         Exception.class,
         () ->
@@ -121,7 +136,7 @@ class PostgresTest {
   void concurrentDuplicatesCommitOnce() throws Exception {
     var p = payload();
     try (var pool = Executors.newFixedThreadPool(4)) {
-      var calls = new ArrayList<Callable<Ingestion.Result>>();
+      var calls = new ArrayList<Callable<IngestionModels.Result>>();
       for (int i = 0; i < 8; i++) calls.add(() -> ingest(p));
       var results = pool.invokeAll(calls);
       int inserted = 0;
@@ -149,10 +164,10 @@ class PostgresTest {
   void rejectsRailsRatiosAndFutureClock() throws Exception {
     var p = payload();
     ((ObjectNode) p.path("raw")).put("gasAdcCounts", 4095);
-    assertEquals("OUT_OF_RANGE", ingest(p).receipt().get("code"));
+    assertEquals("OUT_OF_RANGE", ingest(p).receipt().code());
     p = payload();
     ((ObjectNode) p.path("values")).put("gasRelative", 9);
-    assertEquals("INVALID_CALIBRATION", ingest(p).receipt().get("code"));
+    assertEquals("INVALID_CALIBRATION", ingest(p).receipt().code());
     p = payload();
     p.put(
         "measuredAt",
@@ -160,7 +175,7 @@ class PostgresTest {
             .plusSeconds(300)
             .truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
             .toString());
-    assertEquals("FUTURE_TIMESTAMP", ingest(p).receipt().get("code"));
+    assertEquals("FUTURE_TIMESTAMP", ingest(p).receipt().code());
   }
 
   @Test
@@ -171,9 +186,13 @@ class PostgresTest {
     assertTrue(ingest(p).inserted());
     assertNotEquals(
         p.path("messageId").asText(),
-        measurements.latestRow("AIRSENSE-001") == null
+        monitoringRepository.latest("AIRSENSE-001", Instant.now()) == null
             ? null
-            : measurements.latestRow("AIRSENSE-001").get("message_id"));
+            : monitoringRepository
+                .latest("AIRSENSE-001", Instant.now())
+                .telemetry()
+                .path("messageId")
+                .asText());
   }
 
   @Test
@@ -187,7 +206,7 @@ class PostgresTest {
     var first =
         measurements.history(
             "AIRSENSE-001", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", 1, null);
-    assertNotNull(first.get("nextCursor"));
+    assertNotNull(first.nextCursor());
     var late = payload();
     late.put("measuredAt", "2026-10-01T01:30:00Z");
     ingest(late);
@@ -197,10 +216,10 @@ class PostgresTest {
             "2026-10-01T00:00:00Z",
             "2026-10-02T00:00:00Z",
             1,
-            first.get("nextCursor").toString());
-    assertNull(second.get("nextCursor"));
+            first.nextCursor().toString());
+    assertNull(second.nextCursor());
     assertTrue(
-        Json.MAPPER
+        JsonSupport.MAPPER
             .valueToTree(second)
             .path("items")
             .get(0)
@@ -216,13 +235,13 @@ class PostgresTest {
                 "2026-10-01T00:00:01Z",
                 "2026-10-02T00:00:00Z",
                 1,
-                first.get("nextCursor").toString()));
+                first.nextCursor().toString()));
   }
 
   @Test
   void emptyStatisticsAndImmediateCondition() throws Exception {
     var stats =
-        Json.MAPPER.valueToTree(
+        JsonSupport.MAPPER.valueToTree(
             measurements.stats("AIRSENSE-001", "2020-01-01T00:00:00Z", "2020-01-02T00:00:00Z"));
     assertEquals(0, stats.path("parameters").path("gasRelative").path("validCount").asInt());
     assertTrue(stats.path("parameters").path("gasRelative").path("mean").isNull());
@@ -231,7 +250,7 @@ class PostgresTest {
     ((ObjectNode) p.path("raw")).put("gasAdcMv", 1400);
     ((ObjectNode) p.path("values")).put("gasRelative", 1.4);
     ingest(p);
-    assertEquals("ALERT", conditions.latest("AIRSENSE-001").get("condition"));
+    assertEquals("ALERT", measurements.latest("AIRSENSE-001").condition());
   }
 
   @Test
@@ -242,7 +261,7 @@ class PostgresTest {
     ((ObjectNode) p.path("raw")).put("dustAdcCounts", 4095);
     ((ObjectNode) p.path("quality")).put("dust", "INVALID");
     assertTrue(ingest(p).inserted());
-    assertEquals("UNKNOWN", conditions.latest("AIRSENSE-001").get("condition"));
+    assertEquals("UNKNOWN", measurements.latest("AIRSENSE-001").condition());
   }
 
   @Test
@@ -279,31 +298,35 @@ class PostgresTest {
     request.addHeader("Origin", "http://localhost:8080");
     var response = new MockHttpServletResponse();
     var session =
-        admin.login(
-            Json.MAPPER.valueToTree(
-                Json.obj("username", username, "password", "long-test-password")),
+        authController.login(
+            JsonSupport.MAPPER.writeValueAsString(
+                new AuthModels.Login(username, "long-test-password")),
             request,
             response);
     String token = response.getHeader("Set-Cookie").split(";", 2)[0].split("=", 2)[1];
     request.setCookies(new jakarta.servlet.http.Cookie("airsense_session", token));
-    assertEquals(403, assertThrows(ApiException.class, () -> admin.authorize(request)).status);
-    request.addHeader("X-CSRF-Token", session.get("csrfToken"));
-    assertNotNull(admin.authorize(request));
+    assertEquals(403, assertThrows(ApiException.class, () -> guard.authorize(request)).status);
+    request.addHeader("X-CSRF-Token", session.csrfToken());
+    assertNotNull(guard.authorize(request));
     long revision =
         db.queryForObject("select revision from thresholds where id='gas-rule-001'", Long.class);
     var update =
-        Json.parse(
-            "{\"expectedRevision\":"
-                + revision
-                + ",\"direction\":\"UPPER\",\"warning\":{\"low\":null,\"high\":1.2},\"alert\":{\"low\":null,\"high\":1.3},\"recovery\":{\"low\":null,\"high\":1.15},\"enabled\":true}");
+        JsonSupport.MAPPER.convertValue(
+            JsonSupport.parse(
+                "{\"expectedRevision\":"
+                    + revision
+                    + ",\"direction\":\"UPPER\",\"warning\":{\"low\":null,\"high\":1.2},\"alert\":{\"low\":null,\"high\":1.3},\"recovery\":{\"low\":null,\"high\":1.15},\"enabled\":true}"),
+            ThresholdModels.Update.class);
     assertEquals(
         revision + 1,
-        ((Number) admin.update("gas-rule-001", update, request).get("revision")).longValue());
+        thresholds.update("gas-rule-001", update, guard.authorize(request)).revision());
     assertEquals(
         409,
-        assertThrows(ApiException.class, () -> admin.update("gas-rule-001", update, request))
+        assertThrows(
+                ApiException.class,
+                () -> thresholds.update("gas-rule-001", update, guard.authorize(request)))
             .status);
-    admin.logout(request, response);
-    assertEquals(401, assertThrows(ApiException.class, () -> admin.authorize(request)).status);
+    authController.logout(request, response);
+    assertEquals(401, assertThrows(ApiException.class, () -> guard.authorize(request)).status);
   }
 }

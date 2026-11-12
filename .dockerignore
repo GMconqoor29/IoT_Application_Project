@@ -1,0 +1,8 @@
+**/node_modules
+**/target
+.git
+**/.env
+**/.env.*
+**/secrets
+**/*.dump
+**/.idea

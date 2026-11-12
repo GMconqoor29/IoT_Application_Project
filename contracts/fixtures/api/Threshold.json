@@ -18,8 +18,5 @@
     "low": null,
     "high": 1.15
   },
-  "enterConsecutive": 3,
-  "clearConsecutive": 3,
-  "cooldownSec": 600,
   "enabled": true
 }

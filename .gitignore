@@ -17,3 +17,6 @@ mosquitto/log/*
 **/.venv/
 **/.env
 **/.DS_Store
+
+# Agents
+AGENTS.md

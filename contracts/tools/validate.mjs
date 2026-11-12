@@ -81,5 +81,21 @@ export function canonical(value) {
   if (value !== null && typeof value === 'object') {
     return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;
   }
+  // Canonical v1 uses plain decimal notation in both Java and JavaScript.
+  // This affects comparison representation only, never original payload bytes.
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError('Canonical numbers must be finite.');
+    const text = JSON.stringify(value);
+    if (!/[eE]/.test(text)) return text;
+    const [mantissa, exponent] = text.toLowerCase().split('e');
+    const sign = mantissa.startsWith('-') ? '-' : '';
+    const unsigned = sign ? mantissa.slice(1) : mantissa;
+    const [whole, fraction = ''] = unsigned.split('.');
+    const digits = whole + fraction;
+    const point = whole.length + Number(exponent);
+    return sign + (point <= 0 ? '0.' + '0'.repeat(-point) + digits
+      : point >= digits.length ? digits + '0'.repeat(point - digits.length)
+      : digits.slice(0, point) + '.' + digits.slice(point));
+  }
   return JSON.stringify(value);
 }

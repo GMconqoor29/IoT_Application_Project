@@ -1,0 +1,44 @@
+services:
+  database:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: airsense
+      POSTGRES_USER: airsense
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["database:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airsense -d airsense"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  broker:
+    image: eclipse-mosquitto:2.0.22
+    ports: ["127.0.0.1:1883:1883"]
+    volumes:
+      - ./backend/deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./backend/deploy/acl:/mosquitto/config/acl:ro
+      - ./backend/secrets/mosquitto.passwd:/mosquitto/config/passwords:ro
+      - broker:/mosquitto/data
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/airsense
+      DATABASE_USER: airsense
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
+      MQTT_URI: tcp://broker:1883
+      MQTT_USERNAME: backend
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?Set MQTT_PASSWORD}
+      APP_ORIGIN: http://localhost:8080
+      SECURE_COOKIE: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+      broker:
+        condition: service_started
+volumes:
+  database:
+  broker:

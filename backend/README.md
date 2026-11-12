@@ -8,19 +8,56 @@ Java 21 / Spring Boot 3.5.7, PostgreSQL 17, Flyway, and MQTT. The existing `cont
 - Identical replay returns the original receipt. Conflicting IDs preserve the original measurement. Stable terminal rejections are retained in a capped 10,000-record diagnostic store. Missing provisioning/database failures leave delivery pending.
 - Public devices/latest/history/statistics endpoints, current severity/recommendations, independent quality and freshness, and mixed-calibration rejection.
 - Persisted history snapshot membership with 15-minute cursors, filter binding, 100/500 default/maximum page sizes, and a 31-day range limit. At most 1,000 live snapshots; capacity exhaustion returns 503.
-- BCrypt administrators, hashed session/CSRF verification, absolute eight-hour sessions, login rotation, logout, exact Origin checks, login throttling, request limits, and optimistic threshold edits with immediate cache refresh.
-- Current-rule caching and process-local entry/recovery counters, cooldown and ordering watermarks. Dashboard warnings appear immediately. Notification candidates are logged after the persistence gate. **No external Telegram sender is enabled or implemented**; dashboard warnings are the baseline mechanism and Telegram remains optional. No historical alerts, outbox, or persistent rule state.
+- BCrypt administrators, hashed session/CSRF verification, absolute eight-hour sessions, login rotation, logout, exact Origin checks, login throttling, request limits, and atomic revision-checked threshold edits. The next poll reads the committed rule directly.
+- Dashboard conditions and recommendations are calculated on demand using current rules. Notification counters, rule caches, and startup evaluation are removed. External notification delivery remains optional and unimplemented.
 
-The migration account currently owns the schema. Use a separately managed migration account and least-privilege application role for a shared deployment. Keep measurement/profile/calibration triggers enabled. The application is a single backend instance; its rule cache and notification state are local to that process.
+The migration account currently owns the schema. Use a separately managed migration account and least-privilege application role for a shared deployment. Keep measurement/profile/calibration triggers enabled. The application uses a single MQTT client identity and one bounded ingestion worker; deploy one backend consumer instance.
+
+## Source structure
+
+The implementation follows [BACKEND_SIMPLIFIED_DESIGN.md](../../docs/BACKEND_SIMPLIFIED_DESIGN.md).
+
+| Package | Files and responsibilities |
+|---|---|
+| ingestion | MqttClientConfig owns lifecycle/readiness and the bounded worker; MqttListener dispatches messages and publishes committed receipts; IngestionService coordinates transactions; IngestionRepository owns SQL; TelemetryValidator checks trusted semantics; IngestionModels contains typed context/results. |
+| monitoring | MonitoringController exposes four reads; MonitoringService assembles responses and pagination; MonitoringRepository owns queries/snapshot membership; FreshnessPolicy uses an injected Clock; ConditionEvaluator calculates severity without side effects; MonitoringModels contains records. |
+| threshold | ThresholdController validates wire input and invokes AdminGuard; ThresholdService coordinates updates; ThresholdRepository performs revision-checked SQL; ThresholdValidator checks bounds; ThresholdModels contains rules and updates. |
+| auth | AuthController owns cookies; AdminGuard extracts request credentials; AuthService handles credentials, throttling, session rotation and CSRF; AuthRepository owns persistence; AuthModels redacts secret-bearing records. |
+| common | JsonSupport provides strict/canonical JSON; ContractValidator validates shared schemas; ApiExceptionHandler and RequestLimitsFilter provide safe HTTP behavior; CleanupJob delegates session/snapshot expiry. |
+| operations | Provision and Simulator remain explicit operator commands. |
+
+Services and controllers do not access JDBC. Repositories return typed rows; original telemetry stays as a JSON tree to preserve its versioned wire shape. Devices and thresholds return `{ items: [...] }` envelopes. Latest selects one measurement for both display and evaluation. No Flyway migration was changed for this refactor.
 
 ## Build and test
+
+For a local JVM with the shared EMQX broker, load the ignored `backend/.env`
+into the same PowerShell terminal before starting the application. Spring Boot
+does not load this file automatically:
+
+```powershell
+./backend/tools/load-env.ps1
+mvn -f backend/pom.xml "-Dtest=ContractTest,PolicyTest" verify
+java -jar backend/target/airsense-backend-1.0.0.jar
+```
+
+Paho uses `ssl://host:8883` for MQTT over TLS (rather than `mqtts://`). The
+local environment uses the frontend origin `http://127.0.0.1:5173` and non-Secure
+cookies for local HTTP. Use the exact browser origin; deployments require HTTPS
+and `SECURE_COOKIE=true`. The existing database password is preserved in `.env`.
+The local Compose configuration uses its own Mosquitto service and overrides MQTT
+settings; use the JVM commands above for the shared EMQX configuration.
+
+Building and unit tests need no live broker. PostgreSQL/HTTP integration tests
+require separate `TEST_DATABASE_*` variables. `RUN_MQTT_TESTS=true` starts isolated
+Docker test services; it does not target the shared EMQX broker. The example env
+file documents these opt-in variables without enabling integration tests.
 
 ```powershell
 mvn -f backend/pom.xml package
 npm --prefix contracts test
 ```
 
-Unit tests validate the shared fixtures, strict parsing, canonical equality, and rule boundaries. Database and HTTP tests require an explicitly supplied disposable PostgreSQL database. They create random isolated schemas and remove only their own schemas afterward:
+Unit tests validate shared fixtures, strict parsing, canonical equality, rule boundaries, freshness, quality/calibration-aware severity, typed response envelopes, and trusted telemetry validation. To run only implementation checks without any service tests: `mvn -f backend/pom.xml "-Dtest=ContractTest,PolicyTest" verify`. Database and HTTP tests require an explicitly supplied disposable PostgreSQL database. They create random isolated schemas and remove only their own schemas afterward:
 
 ```powershell
 $env:TEST_DATABASE_URL='jdbc:postgresql://localhost:5432/airsense_test'
@@ -103,10 +140,9 @@ preserved; changing those environment variables does not recreate their database
 
 ```powershell
 Get-Content backend/provision/simulator.sql -Raw | docker compose exec -T database psql -U airsense -d airsense -v ON_ERROR_STOP=1
-docker compose restart backend
 ```
 
-The provisioning script is intentionally non-idempotent: reusing immutable IDs must not silently overwrite evidence. The restart loads the newly provisioned threshold cache.
+The provisioning script is intentionally non-idempotent: reusing immutable IDs must not silently overwrite evidence. Current thresholds are read directly on the next request; provisioning does not require a cache reload.
 
 5. Query `http://localhost:8080/api/devices` and `http://localhost:8080/actuator/health`. Health separately reports database and broker availability; MQTT-disabled tests report UNKNOWN for that component.
 
@@ -140,10 +176,10 @@ Gas calibration uses `gasAdcMv / baselineAdcMv` with absolute tolerance 0.001. T
 
 - For deployment, configure Mosquitto TLS using `deploy/mosquitto-tls.conf.example`, change MQTT_URI to `ssl://broker-host:8883`, and install the issuing CA into the JVM truststore. Hostname verification remains enabled. Use HTTPS termination, set the actual APP_ORIGIN, and leave SECURE_COOKIE=true.
 - Keep broker ACLs per device and backend identity; provision broker passwords separately from application users. Never commit `.env`, password files, tokens, private keys, or database dumps.
-- The single MQTT worker has 256 pending slots. Saturation or database failure produces no application receipt; the node must keep/retry its durable queue. MQTT PUBACK is not storage confirmation. After commit, publishing or evaluation failure cannot undo evidence.
+- The single MQTT worker has 256 pending slots. Saturation or database failure produces no application receipt; the node must keep/retry its durable queue. MQTT PUBACK is not storage confirmation. After commit, publishing failure cannot undo evidence.
 - Rejection evidence is capped, so original rejection timestamps are stable only while the outcome remains retained. Unparseable/oversized envelopes do not receive an arbitrary identity receipt. The operational retention cap intentionally allows oldest rejection evidence to expire.
 - Metadata observations are stored separately; trusted location/profile history is not overwritten from descriptive messages. Retained online state cannot establish connectivity after restart. A fresh heartbeat or newly received telemetry can establish it.
-- Rule counters default to enter=3, clear=3, cooldown=600 seconds; configure `airsense.analysis.enter-consecutive`, `clear-consecutive`, and `cooldown-sec` with positive values. Restarts reset counters/cooldowns; bootstrap considers only fresh latest data. Notification candidate logs are not a durable delivery guarantee.
+- Latest polling has no mutable notification state. Adding external delivery later requires its own ordering, recovery, cooldown, and restart tests.
 - Canonical comparison sorts object keys, preserves array order and exact decimal numerical meaning, normalizes numerical scale, and compares the entire content rather than only its SHA-256 hash. Original UTF-8 bytes are stored independently. SQL numeric values are unscaled. No source measurement is rounded for display.
 
 ## Backup and restore rehearsal
