@@ -43,9 +43,9 @@ services:
       DATABASE_URL: jdbc:postgresql://database:5432/airsense
       DATABASE_USER: airsense
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-airsense_local_pass}
-      MQTT_URI: tcp://mosquitto:1883
-      MQTT_USERNAME: backend
-      MQTT_PASSWORD: ${MQTT_PASSWORD:-airsense_mqtt_pass}
+      MQTT_URI: ssl://jc6fcc66.ala.asia-southeast1.emqxsl.com:8883
+      MQTT_USERNAME: ${MQTT_USERNAME:-airsense}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-BUg65eCFj7F3T:6}
       MQTT_ENABLED: "true"
       APP_ORIGIN: ${APP_ORIGIN:-http://127.0.0.1:5173}
       SECURE_COOKIE: "false"
