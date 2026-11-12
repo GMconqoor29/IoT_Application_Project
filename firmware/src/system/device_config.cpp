@@ -1,4 +1,4 @@
-#include "device_config.h"
+#include "system/device_config.h"
 
 #include <Preferences.h>
 
@@ -54,4 +54,24 @@ void DeviceConfig::resetToDefaults() {
   prefs.end();
 
   *this = defaults();
+}
+
+DeviceConfig DeviceConfig::load() {
+  DeviceConfig config = defaults();
+
+  Preferences prefs;
+  if (!prefs.begin(NVS_NAMESPACE, true)) {
+    return config;
+  }
+
+  config.wifiSsid = prefs.getString("wifi_ssid", config.wifiSsid);
+  config.wifiPass = prefs.getString("wifi_pass", config.wifiPass);
+
+  config.mqttHost = prefs.getString("mqtt_host", config.mqttHost);
+  config.mqttPort = prefs.getUShort("mqtt_port", config.mqttPort);
+  config.mqttUser = prefs.getString("mqtt_user", config.mqttUser);
+  config.mqttPass = prefs.getString("mqtt_pass", config.mqttPass);
+
+  prefs.end();
+  return config;
 }

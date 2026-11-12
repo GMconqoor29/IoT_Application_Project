@@ -15,7 +15,7 @@ The migration account currently owns the schema. Use a separately managed migrat
 
 ## Source structure
 
-The implementation follows [BACKEND_SIMPLIFIED_DESIGN.md](../../docs/BACKEND_SIMPLIFIED_DESIGN.md).
+The implementation follows [AGENTS.md](../AGENTS.md) and [docs/mqtt-topics.md](../docs/mqtt-topics.md).
 
 | Package | Files and responsibilities |
 |---|---|
@@ -131,7 +131,7 @@ preserved; changing those environment variables does not recreate their database
 
 ## Local Docker deployment
 
-`compose.yml` is an explicit local-only profile: ports bind to loopback, MQTT uses authenticated plaintext within the local Docker network, and HTTP cookies are not Secure. Do not expose this profile to the network.
+`docker-compose.yml` (at the repository root) defines the local stack (`mosquitto`, `database`, and `backend`). For hardened local profiles, keep ports bound to loopback, use authenticated MQTT within the local Docker network, and only use non-Secure HTTP cookies in local development.
 
 1. Create `backend/secrets/` and a Mosquitto password file named `mosquitto.passwd`. With Mosquitto installed, run `mosquitto_passwd -c backend/secrets/mosquitto.passwd backend`, then `mosquitto_passwd backend/secrets/mosquitto.passwd AIRSENSE-001`. Both prompt for passwords. The second command must omit `-c` so it preserves the backend account. Ensure the container can read this file.
 2. Set `DATABASE_PASSWORD` and `MQTT_PASSWORD` in your shell; MQTT_PASSWORD must match the backend broker account. There are no default passwords. `backend/.env.example` lists variable names but is not automatically loaded by root Compose.

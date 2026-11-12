@@ -1,7 +1,7 @@
-#include "connectivity.h"
+#include "connectivity/connectivity.h"
 
 #include "config.h"
-#include "logger.h"
+#include "system/logger.h"
 
 namespace {
 constexpr uint32_t WIFI_DIRECT_TIMEOUT_MS   = 10000;
@@ -20,13 +20,30 @@ void applyTxPower() {
   WiFi.setTxPower(WIFI_TX_POWER);
 #endif
 }
+const char *mqttStateDescription(int state) {
+  switch (state) {
+    case -4: return "Connection timeout";
+    case -3: return "Connection lost";
+    case -2: return "TCP/TLS connection failed";
+    case -1: return "Disconnected";
+    case  0: return "Connected";
+    case  1: return "Protocol error";
+    case  2: return "Client ID rejected";
+    case  3: return "Broker unavailable";
+    case  4: return "Bad credentials";
+    case  5: return "Unauthorized";
+    default: return "Unknown MQTT state";
+  }
+}
 }  // namespace
 
-Connectivity::Connectivity(DeviceConfig &cfg) : config(cfg), mqttClient(wifiClient) {}
+Connectivity::Connectivity(DeviceConfig &cfg) : config(cfg), mqttClient(plainClient) {}
 
 void Connectivity::begin() {
   registerAccessPoints();
   connectWiFi();
+
+  secureClient.setCACert(MQTT_ROOT_CA);
 
   mqttClient.setBufferSize(MQTT_BUFFER_SIZE);
   ensureMqttConnected();
@@ -105,7 +122,7 @@ void Connectivity::connectWiFi() {
   if (wifiConnected()) {
     logPrintf("\n[WiFi] Ket noi thanh cong toi '%s'! IP ESP32: %s\n",
               WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
-    configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+    synchronizeTime();
   } else {
     logPrintf("\n[WiFi] Ket noi THAT BAI (status=%d). Go lenh 'wifi <SSID> <PASS>' de doi mang.\n",
               WiFi.status());
@@ -129,8 +146,23 @@ void Connectivity::ensureMqttConnected() {
   if (!wifiConnected() || mqttClient.connected()) {
     return;
   }
-  if (millis() - lastMqttAttempt < MQTT_RETRY_INTERVAL_MS) {
+  if (lastMqttAttempt != 0 && millis() - lastMqttAttempt < MQTT_RETRY_INTERVAL_MS) {
     return;
+  }
+  const bool useTls = (config.mqttPort == 8883 || config.mqttPort == 8884);
+  if (useTls) {
+    if (!timeSynced) {
+      logPrintf("[MQTT] NTP chua dong bo. Thu dong bo lai...\n");
+
+      if (!synchronizeTime()) {
+        lastMqttAttempt = millis();
+        logPrintf("[MQTT] Bo qua ket noi TLS do chua co thoi gian hop le.\n");
+        return;
+      }
+    }
+    mqttClient.setClient(secureClient);
+  } else {
+    mqttClient.setClient(plainClient);
   }
   lastMqttAttempt = millis();
 
@@ -146,7 +178,36 @@ void Connectivity::ensureMqttConnected() {
   if (connected) {
     logPrintf("THANH CONG!\n");
   } else {
-    logPrintf("THAT BAI, rc = %d (Go 'mqtt <IP> [PORT] [USER] [PASS]' neu doi broker)\n",
-              mqttClient.state());
+    logPrintf("THAT BAI, rc = %d (%s)\n", mqttClient.state(), mqttStateDescription(mqttClient.state()));
   }
+}
+
+bool Connectivity::synchronizeTime() {
+  timeSynced = false;
+  logPrintf("[NTP] Dang dong bo thoi gian...\n");
+
+  configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+
+  struct tm timeInfo;
+  const unsigned long start = millis();
+
+  while (!getLocalTime(&timeInfo, 1000)) {
+    if (millis() - start >= 15000) {
+      logPrintf("[NTP] Timeout! Chua dong bo duoc thoi gian.\n");
+      return false;
+    }
+
+    delay(250);
+  }
+
+  logPrintf("[NTP] Dong bo thanh cong: %04d-%02d-%02d %02d:%02d:%02d UTC\n",
+            timeInfo.tm_year + 1900,
+            timeInfo.tm_mon + 1,
+            timeInfo.tm_mday,
+            timeInfo.tm_hour,
+            timeInfo.tm_min,
+            timeInfo.tm_sec);
+
+  timeSynced = true;
+  return true;
 }

@@ -1,11 +1,24 @@
+# Firmware Unit Test Suite (`firmware/test/`)
 
-This directory is intended for PlatformIO Test Runner and project tests.
+This directory contains the host-executable C++ unit test suite and hardware mocks for the AirSense ESP32-S3 firmware.
 
-Unit Testing is a software testing method by which individual units of
-source code, sets of one or more MCU program modules together with associated
-control data, usage procedures, and operating procedures, are tested to
-determine whether they are fit for use. Unit testing finds problems early
-in the development cycle.
+## Structure
 
-More information about PlatformIO Unit Testing:
-- https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+- `test_firmware.cpp`: Unit tests covering all 7 firmware modules:
+  1. `Logger`: Verifies dual output to `Serial` (USB CDC) and `Serial0` (UART0).
+  2. `Scd40`: Verifies I2C command sequences (`0x3F86`, `0x21B1`, `0xE4B8`, `0xEC05`), NACK handling, data-ready bitmasks, raw word conversion formulas, and Sensirion CRC-8 (`0x31`) validation.
+  3. `EnvironmentSensor`: Verifies DHT22 primary readings + SCD40 CO2 acquisition, automatic fallback to SCD40 temperature/humidity when DHT22 fails, and range validation (`[-40, 125] C`, `[0, 100] %`).
+  4. `DeviceConfig`: Verifies NVS persistence (`load()`, `saveWifi()`, `saveMqtt()`, `resetToDefaults()`) across simulated reboots.
+  5. `Connectivity`: Verifies plain TCP (`WiFiClient`) on port `1883`, TLS (`WiFiClientSecure` + NTP guard) on port `8883`, and `WiFiMulti` failover.
+  6. `SerialCommands`: Verifies CLI command parsing (`wifi`, `mqtt`, `status`, `reset`) across `Serial` and `Serial0`.
+  7. `TelemetryBuilder`: Verifies NVS boot counter increments (`100000`, `200000`), monotonic sequence generation, and `SYNCED` / `UNSYNCED` / sensor-fault JSON formatting.
+- `mocks/`: Lightweight C++ mocks (`Arduino.h`, `Wire.h`, `DHT.h`, `Preferences.h`, `WiFi.h`, `WiFiMulti.h`, `WiFiClientSecure.h`, `PubSubClient.h`, `ArduinoJson.h`) enabling deterministic host execution without physical hardware.
+- `run_tests.sh`: Compiles all production `.cpp` files in `firmware/src/` with `g++ -std=c++17 -Wall -Wextra`, runs the 13 C++ unit tests, and validates the generated JSON payloads against `contracts/schemas/telemetry.schema.json`.
+
+## Running the Tests
+
+From the repository root:
+
+```bash
+./firmware/test/run_tests.sh
+```

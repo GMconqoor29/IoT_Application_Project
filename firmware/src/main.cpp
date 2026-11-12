@@ -16,76 +16,26 @@
  */
 
 #include <Arduino.h>
-#include <DHT.h>
-#include <Wire.h>
 
 #include "config.h"
-#include "connectivity.h"
-#include "device_config.h"
-#include "logger.h"
-#include "scd40.h"
-#include "serial_commands.h"
-#include "telemetry_builder.h"
+#include "connectivity/connectivity.h"
+#include "system/device_config.h"
+#include "system/logger.h"
+#include "system/serial_commands.h"
+#include "telemetry/telemetry_builder.h"
+#include "sensors/environment_sensor.h"
 
 // ================= KHỞI TẠO ĐỐI TƯỢNG =================
 
-DeviceConfig deviceConfig = DeviceConfig::defaults();
+DeviceConfig deviceConfig = DeviceConfig::load();
 Connectivity net(deviceConfig);
 SerialCommands commands(deviceConfig, net);
 
-DHT dht(DHT_PIN, DHT_TYPE);
-Scd40 scd40(SCD40_ADDR);
+EnvironmentSensor environmentSensor;
 TelemetryBuilder telemetry(DEVICE_ID);
 
 const String telemetryTopic = String("airsense/") + DEVICE_ID + "/telemetry";
 unsigned long lastReport = 0;
-
-// ==================== ĐỌC CẢM BIẾN ====================
-
-DhtReading readDht() {
-  DhtReading reading;
-  reading.temperatureC = dht.readTemperature();
-  reading.humidityPct  = dht.readHumidity();
-  reading.valid = !isnan(reading.temperatureC) && !isnan(reading.humidityPct) &&
-                  reading.temperatureC >= -40 && reading.temperatureC <= 125 &&
-                  reading.humidityPct >= 0 && reading.humidityPct <= 100;
-
-  if (reading.valid) {
-    logPrintf("[DHT22] Temp: %.1f C | Hum: %.1f %%\n", reading.temperatureC, reading.humidityPct);
-  } else {
-    logPrintf("[DHT22] Khong doc duoc du lieu (kiem tra GPIO %d)\n", DHT_PIN);
-  }
-  return reading;
-}
-
-// Đọc SCD40; nếu DHT22 lỗi (lỏng dây...) thì dùng Temp & Hum của SCD40 thay thế.
-void readScd40WithFallback(DhtReading &reading) {
-  if (!scd40.isConnected() && !scd40.begin()) {
-    logPrintf("[SCD40] Chua ket noi (SDA->GPIO%d, SCL->GPIO%d)\n", I2C_SDA_PIN, I2C_SCL_PIN);
-    return;
-  }
-
-  if (!scd40.isDataReady()) {
-    logPrintf("[SCD40] Dang chuan bi du lieu do...\n");
-    return;
-  }
-
-  Scd40Reading scd;
-  if (!scd40.readMeasurement(scd)) {
-    logPrintf("[SCD40] Loi doc du lieu I2C / CRC!\n");
-    return;
-  }
-
-  logPrintf("[SCD40] True CO2: %u ppm | Temp: %.1f C | Hum: %.1f %%\n",
-            static_cast<unsigned>(scd.co2Ppm), scd.temperatureC, scd.humidityPct);
-
-  if (!reading.valid && !isnan(scd.temperatureC) && !isnan(scd.humidityPct)) {
-    reading.temperatureC = scd.temperatureC;
-    reading.humidityPct  = scd.humidityPct;
-    reading.valid = true;
-    logPrintf("[FALLBACK] Su dung Temp & Hum tu SCD40 cho Telemetry\n");
-  }
-}
 
 // ==================== GỬI TELEMETRY ====================
 
@@ -105,8 +55,7 @@ void publishTelemetry(const String &payload) {
 void reportCycle() {
   logPrintf("------------------------------------------\n");
 
-  DhtReading reading = readDht();
-  readScd40WithFallback(reading);
+  EnvironmentReading reading = environmentSensor.read();
 
   const String payload = telemetry.buildJson(reading, millis(), REPORT_INTERVAL_SEC);
   logPrintf("[TELEMETRY] Payload JSON:\n%s\n", payload.c_str());
@@ -128,15 +77,7 @@ void setup() {
   logPrintf("     (Config.h + WiFiMulti + NVS Flash)\n");
   logPrintf("==========================================\n");
 
-  dht.begin();
-
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-  if (scd40.begin()) {
-    logPrintf("[OK] Tim thay cam bien SCD40 (0x%02X)! Cho chu ky do dau tien...\n", SCD40_ADDR);
-  } else {
-    logPrintf("[WARN] Khong tim thay SCD40 tai 0x%02X! Kiem tra day SDA(%d), SCL(%d)\n",
-              SCD40_ADDR, I2C_SDA_PIN, I2C_SCL_PIN);
-  }
+  environmentSensor.begin();
 
   telemetry.begin();
   commands.printStatus();

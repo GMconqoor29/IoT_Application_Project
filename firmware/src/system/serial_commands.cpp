@@ -1,7 +1,7 @@
-#include "serial_commands.h"
+#include "system/serial_commands.h"
 
 #include "config.h"
-#include "logger.h"
+#include "system/logger.h"
 
 namespace {
 constexpr int MAX_MQTT_ARGS = 4;

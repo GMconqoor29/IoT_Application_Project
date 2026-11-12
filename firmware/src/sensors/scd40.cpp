@@ -1,4 +1,4 @@
-#include "scd40.h"
+#include "sensors/scd40.h"
 
 #include <Wire.h>
 
