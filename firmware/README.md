@@ -68,11 +68,47 @@ firmware/
    ```bash
    cp include/config/secrets.example.h include/config/secrets.h
    ```
-2. Build and upload to ESP32-S3 via PlatformIO:
-   ```bash
-   pio run -t upload
-   pio device monitor -b 115200
-   ```
+   - **Local Mosquitto (TCP 1883)**:
+     ```cpp
+     #define DEFAULT_MQTT_HOST   "192.168.1.94"
+     #define DEFAULT_MQTT_PORT   1883
+     ```
+   - **Cloud Broker (EMQX Cloud TLS 8883)**:
+     ```cpp
+     #define DEFAULT_MQTT_HOST   "xxxx.ala.asia-southeast1.emqxsl.com"
+     #define DEFAULT_MQTT_PORT   8883
+     #define DEFAULT_MQTT_USER   "your_username"
+     #define DEFAULT_MQTT_PASS   "your_password"
+     ```
+     *(Ports `8883` and `8884` automatically activate TLS using the bundled `MQTT_ROOT_CA` in `include/config/mqtt_ca.h` and synchronize time via NTP).*
+
+2. Build and upload to ESP32-S3:
+
+   - **Linux**:
+     - *Serial port permissions & USB bus access*:
+       ```bash
+       sudo usermod -aG dialout $USER && newgrp dialout
+       # Or temporary bus permission:
+       sudo chmod 666 /dev/ttyACM0
+       ```
+     - *Upload & monitor commands (using penv binary path if `pio` is not in `$PATH`)*:
+       ```bash
+       ~/.platformio/penv/bin/pio run -t upload
+       ~/.platformio/penv/bin/pio device monitor -b 115200
+       # Or target a specific port:
+       ~/.platformio/penv/bin/pio run -t upload --upload-port /dev/ttyACM0
+       ~/.platformio/penv/bin/pio device monitor -b 115200 -p /dev/ttyACM0
+       ```
+
+   - **Windows**:
+     - *In PlatformIO CLI or PowerShell*:
+       ```powershell
+       pio run -t upload
+       pio device monitor -b 115200
+       # Or direct executable path:
+       %USERPROFILE%\.platformio\penv\Scripts\pio.exe run -t upload
+       %USERPROFILE%\.platformio\penv\Scripts\pio.exe device monitor -b 115200
+       ```
 
 ## Running Unit Tests
 

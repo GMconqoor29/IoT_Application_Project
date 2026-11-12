@@ -378,15 +378,22 @@ bool test_serial_commands_wifi_mqtt_and_reset() {
   ASSERT_EQ(cfg.mqttPass, String("secret_pw"));
   ASSERT_TRUE(PubSubClient::activeClient->isSecureClient());
 
-  // 3. MQTT command with host only (defaults to DEFAULT_MQTT_PORT 1883, plain TCP)
+  // 3. MQTT command with host only (defaults to DEFAULT_MQTT_PORT)
   Serial.injectLine("mqtt 192.168.1.200");
   commands.poll();
   ASSERT_EQ(cfg.mqttHost, String("192.168.1.200"));
   ASSERT_EQ(cfg.mqttPort, static_cast<uint16_t>(DEFAULT_MQTT_PORT));
   ASSERT_EQ(cfg.mqttUser, String(""));
+  const bool expectedSecureDefault = (DEFAULT_MQTT_PORT == 8883 || DEFAULT_MQTT_PORT == 8884);
+  ASSERT_EQ(PubSubClient::activeClient->isSecureClient(), expectedSecureDefault);
+
+  // 4. MQTT command switching to plain TCP (port 1883)
+  Serial.injectLine("mqtt 192.168.1.200 1883");
+  commands.poll();
+  ASSERT_EQ(cfg.mqttPort, static_cast<uint16_t>(1883));
   ASSERT_FALSE(PubSubClient::activeClient->isSecureClient());
 
-  // 4. Reset command restores config.h defaults
+  // 5. Reset command restores config.h defaults
   Serial.injectLine("reset");
   commands.poll();
   ASSERT_EQ(cfg.wifiSsid, String(DEFAULT_WIFI_SSID));
